@@ -1,6 +1,10 @@
-package eigen
+package matrix
 
-import "math"
+import (
+	matrixdecomp "PainTheMaster/mybraly/math/matrix/matrixDecomp"
+	matrixsolver "PainTheMaster/mybraly/math/matrix/matrixSolver"
+	"math"
+)
 
 //EigenVecByQR calculates all eigen vectors of a square matix A by using reverse iteration method.
 //"iter" is the iteration number of repetition.
@@ -54,7 +58,7 @@ func EigenVecByQR(A [][]float64, iter int) (eigenVecs [][]float64) {
 		for round := 0; round <= iter-1; round++ {
 			var norm float64
 
-			eigenVecs[idxRambda] = LuSolver(B, eigenVecs[idxRambda])
+			eigenVecs[idxRambda] = matrixsolver.LuSolver(B, eigenVecs[idxRambda])
 
 			norm = 0.0
 			for k := 0; k <= size-1; k++ {
@@ -87,7 +91,7 @@ func EigenValByQR(A [][]float64, iter int) (Ans [][]float64) {
 
 	for i := 1; i <= iter; i++ {
 		/*まずQt,Rを求める*/
-		Qt, R = Qr(R) /*宣言同時代入(:=)してはいけない。そうしてしまう右辺と左辺のRが別々のシンボルとなり、毎回Rの初期値から初めてしまうようだ!*/
+		Qt, R = matrixdecomp.Qr(R) /*宣言同時代入(:=)してはいけない。そうしてしまう右辺と左辺のRが別々のシンボルとなり、毎回Rの初期値から初めてしまうようだ!*/
 
 		/* Qを順に掛けていく */
 		lenQt := len(Qt)
@@ -100,247 +104,6 @@ func EigenValByQR(A [][]float64, iter int) (Ans [][]float64) {
 	}
 
 	Ans = R
-	return
-}
-
-//Qr performs QR decomposition of A and returns corresponding Householder "vectors" and a matrix R
-func Qr(A [][]float64) (Qt [][]float64, R [][]float64) {
-
-	size := len(A)
-
-	Qt = make([][]float64, size-1)
-
-	R = make([][]float64, size)
-	for i := 0; i <= size-1; i++ {
-		R[i] = make([]float64, size)
-	}
-	for i := 0; i <= size-1; i++ {
-		for j := 0; j <= size-1; j++ {
-			R[i][j] = A[i][j]
-		}
-	}
-
-	for colPiv := 0; colPiv <= size-2; colPiv++ {
-		tempH, topVal := Householder(R, colPiv, colPiv)
-
-		Qt[colPiv] = make([]float64, size-colPiv)
-		for row := 0; row <= size-colPiv-1; row++ {
-			Qt[colPiv][row] = tempH[row]
-		}
-
-		R[colPiv][colPiv] = topVal
-		for i := colPiv + 1; i <= size-1; i++ {
-			R[i][colPiv] = 0.0
-		}
-
-		for colProduct := colPiv + 1; colProduct <= size-1; colProduct++ {
-			helperMultiplyQrVertical(R, colProduct, tempH)
-		}
-
-	}
-
-	return
-}
-
-//Householder gives "Householder vector" of A focusing on the column c "col" and topVal. topVal is the 1st element of the transformed vector and corresponds to the norm of the original vector
-//processes the column "col", from row "row" to size-1.
-func Householder(A [][]float64, col int, row int) (h []float64, topVal float64) {
-	size := len(A)
-
-	topVal = 0.0
-	for i := row; i <= size-1; i++ {
-		topVal += A[i][col] * A[i][col]
-	}
-
-	tempSqNormH := topVal
-
-	topVal = math.Sqrt(topVal)
-	if A[row][col] > 0 {
-		topVal *= -1.0
-	}
-
-	h = make([]float64, size-row)
-
-	h[0] = A[row][col] - topVal
-
-	for i := 1; i <= size-row-1; i++ {
-		h[i] = A[row+i][col]
-	}
-
-	tempSqNormH -= A[row][col] * A[row][col]
-	tempSqNormH += h[0] * h[0]
-
-	normalizFactor := 1.0 / math.Sqrt(tempSqNormH)
-
-	for i := 0; i <= size-row-1; i++ {
-		h[i] *= normalizFactor
-	}
-
-	return
-}
-
-//QrSolver gives solution to a equation QtRx=y
-//A matrix has to be decomposed into a "Householder""Qt"
-func QrSolver(Qt [][]float64, R [][]float64, y []float64) (x []float64) {
-
-	size := len(R)
-
-	yTemp := make([]float64, size)
-	for i := 0; i <= size-1; i++ {
-		yTemp[i] = y[i]
-	}
-
-	for idxQ := 0; idxQ <= size-2; idxQ++ {
-		innerProd := 0.0
-		for i := 0; i+idxQ <= size-1; i++ {
-			innerProd += Qt[idxQ][i] * yTemp[idxQ+i]
-		}
-
-		for i := 0; i+idxQ <= size-1; i++ {
-			yTemp[idxQ+i] = yTemp[idxQ+i] - 2.0*Qt[idxQ][i]*innerProd
-		}
-	}
-
-	x = make([]float64, size)
-
-	for rowSolv := size - 1; rowSolv >= 0; rowSolv-- {
-		var sum float64
-		for i := size - 1; i >= rowSolv+1; i-- {
-			sum += R[rowSolv][i] * x[i]
-		}
-		x[rowSolv] = (yTemp[rowSolv] - sum) / R[rowSolv][rowSolv]
-	}
-
-	return
-
-}
-
-//LU decomposes a square matrix A into L and U. Diagonal elements of L are 1
-func lu(A [][]float64) (LU [][]float64) {
-	size := len(A)
-
-	LU = make([][]float64, size)
-	for i := 0; i <= size-1; i++ {
-		LU[i] = make([]float64, size)
-	}
-
-	for col := 0; col <= size-1; col++ {
-		for row := 0; row <= col; row++ {
-			var innerprod float64
-			for i := 0; i <= row-1; i++ {
-				innerprod += LU[row][i] * LU[i][col]
-			}
-			LU[row][col] = A[row][col] - innerprod
-		}
-
-		for row := col + 1; row <= size-1; row++ {
-			var innerprod float64
-			for i := 0; i <= row-1; i++ {
-				innerprod += LU[row][i] * LU[i][col]
-			}
-			LU[row][col] = (A[row][col] - innerprod) / LU[col][col]
-		}
-	}
-	return
-}
-
-//LuInverse calculates inverse matrices of LU matrices
-//Diagonal elements of L are 1
-func LuInverse(LU [][]float64) (LUinv [][]float64) {
-
-	size := len(LU)
-
-	LUinv = make([][]float64, size)
-	for i := 0; i <= size-1; i++ {
-		LUinv[i] = make([]float64, size)
-	}
-
-	//U
-	for col := size - 1; col >= 0; col-- {
-		row := col
-		LUinv[col][col] = 1.0 / LU[col][col]
-
-		for row = col - 1; row >= 0; row-- {
-			var innerprod float64
-			for i := row + 1; i <= col; i++ {
-				innerprod += LU[row][i] * LUinv[i][col]
-			}
-			LUinv[row][col] = -1.0 * innerprod / LU[row][row]
-		}
-	}
-
-	//L
-	for row := size - 1; row >= 0; row-- {
-
-		for col := row - 1; col >= 0; col-- {
-			var innerprod float64
-			for i := col + 1; i <= row-1; i++ {
-				innerprod += LUinv[row][i] * LU[i][col]
-			}
-			innerprod += 1.0 * LU[row][col]
-			LUinv[row][col] = -1.0 * innerprod
-		}
-	}
-	return
-}
-
-//InverseMatrix calculates a inverse matrix of A by using LU decompostition
-func InverseMatrix(A [][]float64) (AInv [][]float64) {
-	size := len(A)
-	AInv = make([][]float64, size)
-	for i := 0; i <= size-1; i++ {
-		AInv[i] = make([]float64, size)
-	}
-	LU := lu(A)
-	LUinv := LuInverse(LU)
-
-	//UL
-	for row := 0; row <= size-1; row++ {
-		//colが小さい時（長い列ベクトルでUが制限因子になっている時）
-		for col := 0; col <= row-1; col++ {
-			var innerprod float64
-			for i := row; i <= size-1; i++ {
-				innerprod += LUinv[row][i] * LUinv[i][col]
-			}
-			AInv[row][col] = innerprod
-		}
-
-		for col := row; col <= size-1; col++ {
-			var innerprod float64
-			innerprod = LUinv[row][col] * 1.0
-			for i := col + 1; i <= size-1; i++ {
-				innerprod += LUinv[row][i] * LUinv[i][col]
-			}
-			AInv[row][col] = innerprod
-		}
-	}
-
-	return
-}
-
-//LuSolver solves a equasion Ax=y by using LU decomposition
-func LuSolver(A [][]float64, y []float64) (x []float64) {
-	size := len(A)
-	x = make([]float64, size)
-	interm := make([]float64, size)
-
-	LU := lu(A)
-	//L*interm = y, interm = Ux
-	for i := 0; i <= size-1; i++ {
-		var innerprod float64
-		for j := 0; j <= i-1; j++ {
-			innerprod += LU[i][j] * interm[j]
-		}
-		interm[i] = y[i] - innerprod
-	}
-	//Ux = interm
-	for i := size - 1; i >= 0; i-- {
-		var innerprod float64
-		for j := size - 1; j >= i+1; j-- {
-			innerprod += LU[i][j] * x[j]
-		}
-		x[i] = (interm[i] - innerprod) / LU[i][i]
-	}
 	return
 }
 
@@ -368,7 +131,7 @@ func TripDiagHouseholder(A [][]float64) (householderVec [][]float64, TripDiag []
 
 	for piv := 0; piv <= size-3; piv++ {
 		TripDiag[0][piv] = tempMat[piv][piv]
-		householderVec[piv], TripDiag[1][piv] = Householder(tempMat, piv, piv+1)
+		householderVec[piv], TripDiag[1][piv] = matrixdecomp.Householder(tempMat, piv, piv+1)
 		tempMat[piv+1][piv] = TripDiag[1][piv]
 		for row := piv + 2; row <= size-1; row++ {
 			tempMat[row][piv] = 0.0

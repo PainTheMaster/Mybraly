@@ -1,4 +1,4 @@
-package eigen
+package matrix
 
 import "math"
 
@@ -70,7 +70,6 @@ func helperLambdaDelta(v []float64) (deltaNeg, deltaPos float64) {
 	return
 }
 
-//helperMultiplyQrVertical multiplies a vector to a matrix from the right in a Householder manner
 func helperMultiplyQrVertical(R [][]float64, col int, v []float64) {
 	sizeMat := len(R)
 	sizeVec := len(v)
