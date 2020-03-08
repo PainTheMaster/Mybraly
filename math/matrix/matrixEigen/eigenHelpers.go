@@ -1,8 +1,8 @@
-package matrix
+package helpermatrixeigen
 
 import "math"
 
-func helperLambdaDelta(v []float64) (deltaNeg, deltaPos float64) {
+func HelperLambdaDelta(v []float64) (deltaNeg, deltaPos float64) {
 
 	size := len(v)
 	var count, previous int
@@ -70,7 +70,7 @@ func helperLambdaDelta(v []float64) (deltaNeg, deltaPos float64) {
 	return
 }
 
-func helperMultiplyQrVertical(R [][]float64, col int, v []float64) {
+func HelperMultiplyQrVertical(R [][]float64, col int, v []float64) {
 	sizeMat := len(R)
 	sizeVec := len(v)
 
@@ -88,7 +88,7 @@ func helperMultiplyQrVertical(R [][]float64, col int, v []float64) {
 }
 
 //helperMultiplyQrhorizon multiplies a vector to a matrix from right in a Householder manner
-func helperMultiplyQrHorizon(R [][]float64, row int, vt []float64) {
+func HelperMultiplyQrHorizon(R [][]float64, row int, vt []float64) {
 
 	sizeMat := len(R)
 	sizeVec := len(vt)

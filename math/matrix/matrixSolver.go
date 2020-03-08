@@ -1,9 +1,5 @@
 package matrix
 
-import (
-	matrixdecomp "PainTheMaster/mybraly/math/matrix/matrixDecomp"
-)
-
 /*QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR*/
 /*              QR related functions from here               */
 /*QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR*/
@@ -54,7 +50,7 @@ func LuSolver(A [][]float64, y []float64) (x []float64) {
 	x = make([]float64, size)
 	interm := make([]float64, size)
 
-	LU := matrixdecomp.Lu(A)
+	LU := Lu(A)
 	//L*interm = y, interm = Ux
 	for i := 0; i <= size-1; i++ {
 		var innerprod float64
@@ -121,7 +117,7 @@ func InverseMatrix(A [][]float64) (AInv [][]float64) {
 	for i := 0; i <= size-1; i++ {
 		AInv[i] = make([]float64, size)
 	}
-	LU := matrixdecomp.Lu(A)
+	LU := Lu(A)
 	LUinv := LuInverse(LU)
 
 	//UL

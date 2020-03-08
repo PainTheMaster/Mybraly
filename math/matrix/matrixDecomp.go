@@ -1,6 +1,9 @@
 package matrix
 
-import "math"
+import (
+	helper "PainTheMaster/mybraly/math/matrix/matrixDecomp"
+	"math"
+)
 
 //Householder gives "Householder vector" of A focusing on the column c "col" and topVal. topVal is the 1st element of the transformed vector and corresponds to the norm of the original vector
 //processes the column "col", from row "row" to size-1.
@@ -70,7 +73,8 @@ func Qr(A [][]float64) (Qt [][]float64, R [][]float64) {
 		}
 
 		for colProduct := colPiv + 1; colProduct <= size-1; colProduct++ {
-			helperMultiplyQrVertical(R, colProduct, tempH)
+			//			helper.HelperMultiplyQrVertical(R, colProduct, tempH)
+			helper.HelperMultiplyQrVertical(R, colProduct, tempH)
 		}
 
 	}

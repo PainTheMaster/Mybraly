@@ -1,6 +1,6 @@
-package matrix
+package helpermatrixdecomp
 
-func helperMultiplyQrVertical(R [][]float64, col int, v []float64) {
+func HelperMultiplyQrVertical(R [][]float64, col int, v []float64) {
 	sizeMat := len(R)
 	sizeVec := len(v)
 
@@ -18,7 +18,7 @@ func helperMultiplyQrVertical(R [][]float64, col int, v []float64) {
 }
 
 //helperMultiplyQrhorizon multiplies a vector to a matrix from right in a Householder manner
-func helperMultiplyQrHorizon(R [][]float64, row int, vt []float64) {
+func HelperMultiplyQrHorizon(R [][]float64, row int, vt []float64) {
 
 	sizeMat := len(R)
 	sizeVec := len(vt)

@@ -1,8 +1,7 @@
 package matrix
 
 import (
-	matrixdecomp "PainTheMaster/mybraly/math/matrix/matrixDecomp"
-	matrixsolver "PainTheMaster/mybraly/math/matrix/matrixSolver"
+	helper "PainTheMaster/mybraly/math/matrix/matrixEigen"
 	"math"
 )
 
@@ -34,7 +33,7 @@ func EigenVecByQR(A [][]float64, iter int) (eigenVecs [][]float64) {
 	}
 
 	//固有値シフトのデルタを求める。
-	deltaNeg, deltaPos := helperLambdaDelta(eigenVal)
+	deltaNeg, deltaPos := helper.HelperLambdaDelta(eigenVal)
 
 	for idxRambda := 0; idxRambda <= size-1; idxRambda++ {
 		var shift float64
@@ -58,7 +57,7 @@ func EigenVecByQR(A [][]float64, iter int) (eigenVecs [][]float64) {
 		for round := 0; round <= iter-1; round++ {
 			var norm float64
 
-			eigenVecs[idxRambda] = matrixsolver.LuSolver(B, eigenVecs[idxRambda])
+			eigenVecs[idxRambda] = LuSolver(B, eigenVecs[idxRambda])
 
 			norm = 0.0
 			for k := 0; k <= size-1; k++ {
@@ -91,13 +90,13 @@ func EigenValByQR(A [][]float64, iter int) (Ans [][]float64) {
 
 	for i := 1; i <= iter; i++ {
 		/*まずQt,Rを求める*/
-		Qt, R = matrixdecomp.Qr(R) /*宣言同時代入(:=)してはいけない。そうしてしまう右辺と左辺のRが別々のシンボルとなり、毎回Rの初期値から初めてしまうようだ!*/
+		Qt, R = Qr(R) /*宣言同時代入(:=)してはいけない。そうしてしまう右辺と左辺のRが別々のシンボルとなり、毎回Rの初期値から初めてしまうようだ!*/
 
 		/* Qを順に掛けていく */
 		lenQt := len(Qt)
 		for idxQt := 0; idxQt <= lenQt-1; idxQt++ {
 			for row := 0; row <= size-1; row++ {
-				helperMultiplyQrHorizon(R, row, Qt[idxQt])
+				helper.HelperMultiplyQrHorizon(R, row, Qt[idxQt])
 			}
 		}
 
@@ -131,13 +130,13 @@ func TripDiagHouseholder(A [][]float64) (householderVec [][]float64, TripDiag []
 
 	for piv := 0; piv <= size-3; piv++ {
 		TripDiag[0][piv] = tempMat[piv][piv]
-		householderVec[piv], TripDiag[1][piv] = matrixdecomp.Householder(tempMat, piv, piv+1)
+		householderVec[piv], TripDiag[1][piv] = Householder(tempMat, piv, piv+1)
 		tempMat[piv+1][piv] = TripDiag[1][piv]
 		for row := piv + 2; row <= size-1; row++ {
 			tempMat[row][piv] = 0.0
 		}
 		for colMulti := piv + 1; colMulti <= size-1; colMulti++ {
-			helperMultiplyQrVertical(tempMat, colMulti, householderVec[piv])
+			helper.HelperMultiplyQrVertical(tempMat, colMulti, householderVec[piv])
 		}
 
 		tempMat[piv][piv+1] = TripDiag[1][piv]
@@ -145,7 +144,7 @@ func TripDiagHouseholder(A [][]float64) (householderVec [][]float64, TripDiag []
 			tempMat[piv][col] = 0.0
 		}
 		for colMulti := piv + 1; colMulti <= size-1; colMulti++ {
-			helperMultiplyQrHorizon(tempMat, colMulti, householderVec[piv])
+			helper.HelperMultiplyQrHorizon(tempMat, colMulti, householderVec[piv])
 		}
 	}
 
