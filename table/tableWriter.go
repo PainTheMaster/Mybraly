@@ -6,9 +6,10 @@ import (
 	"strconv"
 )
 
-func writeTable(matrix [][]float64, file os.File) {
+// WriteTable writes a table
+func WriteTable(matrix [][]float64, file *os.File) {
 
-	writer := bufio.NewWriter(&file)
+	writer := bufio.NewWriter(file)
 
 	rows := len(matrix)
 	for i := 0; i <= rows-1; i++ {
@@ -17,7 +18,8 @@ func writeTable(matrix [][]float64, file os.File) {
 			writer.WriteString(strconv.FormatFloat(matrix[i][j], 'e', 10, 64))
 			writer.WriteByte(',')
 		}
-		writer.WriteString("/n")
-
+		writer.WriteString("\n")
+		writer.Flush()
 	}
+
 }
