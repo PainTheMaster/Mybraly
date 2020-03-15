@@ -6,8 +6,8 @@ import (
 	"strconv"
 )
 
-// WriteTable writes a table
-func WriteTable(matrix [][]float64, file *os.File) {
+// WriteTableFloat writes a table of float64
+func WriteTableFloat(matrix [][]float64, file *os.File) {
 
 	writer := bufio.NewWriter(file)
 
