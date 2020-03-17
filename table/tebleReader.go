@@ -205,8 +205,8 @@ func ReadTableHeader(reader io.ReadSeeker, delim byte) (header []string) {
 			if b[i] == delim {
 				delimNum++
 			} else if (b[i] == '"') || (b[i] == '\'') {
-				quaTemp := b[i]
-				for i++; b[i] != quaTemp; i++ {
+				quatatTemp := b[i]
+				for i++; b[i] != quatatTemp; i++ {
 				}
 				i++
 				if i == length {
