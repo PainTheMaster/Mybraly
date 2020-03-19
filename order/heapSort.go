@@ -1,7 +1,7 @@
 package order
 
-//PartialHashSortFunc sorts the s Sorter from index ini to end by evaluating each element by using the magnitude()
-func PartialHashSortFunc(s Sorter, ini int, end int, magnitude func(Sorter, int) float64) {
+//PartialHeapSortFunc sorts the s Sorter from index ini to end by evaluating each element by using the magnitude()
+func PartialHeapSortFunc(s Sorter, ini int, end int, magnitude func(Sorter, int) float64) {
 
 	for focus := end; focus >= ini+1; focus-- {
 		boss := (focus-ini-1)/2 + ini
@@ -43,38 +43,38 @@ func PartialHashSortFunc(s Sorter, ini int, end int, magnitude func(Sorter, int)
 	}
 }
 
-//PartialHashSort sorts the s Sorter by using the Sorter.DefaultMagnitude()
-func PartialHashSort(s Sorter, ini int, end int) {
+//PartialHeapSort sorts the s Sorter by using the Sorter.DefaultMagnitude()
+func PartialHeapSort(s Sorter, ini int, end int) {
 	dummyMagnitude := func(x Sorter, i int) float64 {
 		return x.DefaultMagnitude(i)
 	}
 
-	PartialHashSortFunc(s, 0, s.Length(), dummyMagnitude)
+	PartialHeapSortFunc(s, 0, s.Length(), dummyMagnitude)
 }
 
-//PartialHashSortReverse sorts the s Sorter by using the Sorter.DefaultMagnitude()
-func PartialHashSortReverse(s Sorter, ini int, end int) {
+//PartialHeapSortReverse sorts the s Sorter by using the Sorter.DefaultMagnitude()
+func PartialHeapSortReverse(s Sorter, ini int, end int) {
 	dummyMagnitude := func(x Sorter, i int) float64 {
 		return x.DefaultMagnitude(i) * (-1.0)
 	}
 
-	PartialHashSortFunc(s, 0, s.Length(), dummyMagnitude)
+	PartialHeapSortFunc(s, 0, s.Length(), dummyMagnitude)
 }
 
-// HashSort sorts s Sorter from index 0 to the end by using the Sorter.DefaltMagnitude()
-func HashSort(s Sorter) {
+// HeapSort sorts s Sorter from index 0 to the end by using the Sorter.DefaltMagnitude()
+func HeapSort(s Sorter) {
 	dummyMagnitude := func(x Sorter, i int) float64 {
 		return x.DefaultMagnitude(i)
 	}
 
-	PartialHashSortFunc(s, 0, s.Length()-1, dummyMagnitude)
+	PartialHeapSortFunc(s, 0, s.Length()-1, dummyMagnitude)
 }
 
-// HashSortReverse sorts s Sorter from index 0 to the end by using the Sorter.DefaltMagnitude()
-func HashSortReverse(s Sorter) {
+// HeapSortReverse sorts s Sorter from index 0 to the end by using the Sorter.DefaltMagnitude()
+func HeapSortReverse(s Sorter) {
 	dummyMagnitude := func(x Sorter, i int) float64 {
 		return x.DefaultMagnitude(i) * (-1.0)
 	}
 
-	PartialHashSortFunc(s, 0, s.Length()-1, dummyMagnitude)
+	PartialHeapSortFunc(s, 0, s.Length()-1, dummyMagnitude)
 }

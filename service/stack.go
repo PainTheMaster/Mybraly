@@ -3,6 +3,7 @@ package service
 const (
 	iniLength       = 16
 	truncationLimit = 16
+	minLength       = 16
 )
 
 //StackInterface is a interface for stack.
@@ -43,7 +44,7 @@ func (s *Stack) Push(inElement interface{}) {
 func (s *Stack) Pop() (outElement interface{}) {
 	outElement = s.storage[s.idxTop]
 	s.idxTop--
-	if (s.idxTop + 1) <= s.length/truncationLimit {
+	if (s.idxTop+1) <= s.length/truncationLimit && (s.idxTop+1 > minLength) {
 		s.storage = s.storage[: s.idxTop+1 : s.idxTop+1]
 		s.length = s.idxTop + 1
 	}
