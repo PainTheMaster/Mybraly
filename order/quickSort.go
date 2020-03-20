@@ -13,38 +13,38 @@ type term struct {
 
 //QuickSort sorts sorter Sorter by using default magnitude function DefaultMagnitude
 func QuickSort(sorter Sorter) {
-	magnitude := func(sorter Sorter, idx int) float64 {
-		return sorter.DefaultMagnitude(idx)
+	defaultCompare := func(sorter Sorter, i int, j int) int {
+		return sorter.Compare(i, j)
 	}
-	PartialQuickSortFunc(sorter, 0, sorter.Length()-1, magnitude)
+	PartialQuickSortFunc(sorter, 0, sorter.Length()-1, defaultCompare)
 }
 
 //QuickSortReverse sorts sorter Sorter by using default magnitude function DefaultMagnitude
 func QuickSortReverse(sorter Sorter) {
-	magnitude := func(sorter Sorter, idx int) float64 {
-		return sorter.DefaultMagnitude(idx) * (-1.0)
+	defaultCompare := func(sorter Sorter, i int, j int) int {
+		return sorter.Compare(i, j) * (-1)
 	}
-	PartialQuickSortFunc(sorter, 0, sorter.Length()-1, magnitude)
+	PartialQuickSortFunc(sorter, 0, sorter.Length()-1, defaultCompare)
 }
 
 //PartialQuickSort sorts sorter Sorter by using default magnitude function DefaultMagnitude
 func PartialQuickSort(sorter Sorter, ini int, end int) {
-	magnitude := func(sorter Sorter, idx int) float64 {
-		return sorter.DefaultMagnitude(idx)
+	defaultCompare := func(sorter Sorter, i int, j int) int {
+		return sorter.Compare(i, j)
 	}
-	PartialQuickSortFunc(sorter, ini, end, magnitude)
+	PartialQuickSortFunc(sorter, ini, end, defaultCompare)
 }
 
 //PartialQuickSortReverse reversely sorts sorter Sorter by using default magnitude function DefaultMagnitude
 func PartialQuickSortReverse(sorter Sorter, ini int, end int) {
-	magnitude := func(sorter Sorter, idx int) float64 {
-		return sorter.DefaultMagnitude(idx) * (-1.0)
+	defaultCompare := func(sorter Sorter, i int, j int) int {
+		return sorter.Compare(i, j) * (-1)
 	}
-	PartialQuickSortFunc(sorter, ini, end, magnitude)
+	PartialQuickSortFunc(sorter, ini, end, defaultCompare)
 }
 
 // PartialQuickSortFunc sorts sorter Sorter by quick sort method
-func PartialQuickSortFunc(sorter Sorter, ini int, end int, magnitude func(Sorter, int) float64) {
+func PartialQuickSortFunc(sorter Sorter, ini int, end int, compare func(Sorter, int, int) int) {
 	var stack service.Stack
 	var span term
 
@@ -54,14 +54,14 @@ func PartialQuickSortFunc(sorter Sorter, ini int, end int, magnitude func(Sorter
 
 	for stack.Depth() >= 1 {
 		span = stack.Pop().(term)
-		pivot := unitQuickSort(sorter, span.ini, span.end, magnitude)
+		pivot := unitQuickSort(sorter, span.ini, span.end, compare)
 
 		//left
 		if pivot-span.ini+1 > maxHeapLength {
 			left := term{ini: span.ini, end: pivot}
 			stack.Push(left)
 		} else {
-			PartialHeapSortFunc(sorter, span.ini, pivot, magnitude)
+			PartialHeapSortFunc(sorter, span.ini, pivot, compare)
 		}
 
 		//right
@@ -69,7 +69,7 @@ func PartialQuickSortFunc(sorter Sorter, ini int, end int, magnitude func(Sorter
 			right := term{ini: pivot + 1, end: span.end}
 			stack.Push(right)
 		} else {
-			PartialHeapSortFunc(sorter, pivot+1, span.end, magnitude)
+			PartialHeapSortFunc(sorter, pivot+1, span.end, compare)
 		}
 	}
 }
@@ -78,23 +78,24 @@ func PartialQuickSortFunc(sorter Sorter, ini int, end int, magnitude func(Sorter
 ////////////////////////////        Helper fuctions from here    ///////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func unitQuickSort(sorter Sorter, ini int, end int, magnitude func(Sorter, int) float64) int {
+func unitQuickSort(sorter Sorter, ini int, end int, compare func(Sorter, int, int) int) int {
 
-	startingIdxPiv, magPiv := pivoting(sorter, ini, end, magnitude)
+	//	startingIdxPiv, magPiv := pivoting(sorter, ini, end, magnitude)
 
-	idxPiv := startingIdxPiv
+	idxPiv := pivoting(sorter, ini, end, compare)
+
 	frontL, frontR := ini, end
 
 	for {
 		//start moving frontL from the left to find the first bigger-than- or equal-to-pivot value
 		for ; frontL <= idxPiv-1; frontL++ {
-			if magnitude(sorter, frontL) >= magPiv {
+			if compare(sorter, frontL, idxPiv) >= 0 {
 				break
 			}
 		}
 		//start moving frontR from the right to find the first smaller-than-pivot value
 		for ; frontR >= idxPiv+1; frontR-- {
-			if magnitude(sorter, frontR) < magPiv {
+			if compare(sorter, idxPiv, frontR) > 0 {
 				break
 			}
 		}
@@ -115,38 +116,32 @@ func unitQuickSort(sorter Sorter, ini int, end int, magnitude func(Sorter, int) 
 	return idxPiv
 }
 
-func pivoting(sorter Sorter, ini int, end int, magnitude func(Sorter, int) float64) (idxPvt int, magPiv float64) {
+func pivoting(sorter Sorter, ini int, end int, compare func(Sorter, int, int) int) (idxPvt int) {
 	a := ini
 	b := ini + (end-ini)/2
 	c := end
 
-	magA := magnitude(sorter, a)
-	magB := magnitude(sorter, b)
-	magC := magnitude(sorter, c)
+	AbiggerB := compare(sorter, a, b)
+	AbiggerC := compare(sorter, a, c)
+	BbiggerC := compare(sorter, b, c)
 
-	if magA >= magB && magA >= magC {
-		if magB >= magC {
+	if AbiggerB >= 0 && AbiggerC >= 0 {
+		if BbiggerC >= 0 {
 			idxPvt = b
-			magPiv = magB
 		} else {
 			idxPvt = c
-			magPiv = magC
 		}
-	} else if magB >= magA && magB >= magC {
-		if magA >= magC {
+	} else if AbiggerB <= 0 && BbiggerC >= 0 {
+		if AbiggerC >= 0 {
 			idxPvt = a
-			magPiv = magA
 		} else {
 			idxPvt = c
-			magPiv = magC
 		}
-	} else if magC >= magA && magC >= magB {
-		if magA >= magB {
+	} else if AbiggerC <= 0 && BbiggerC <= 0 {
+		if AbiggerB >= 0 {
 			idxPvt = a
-			magPiv = magA
 		} else {
 			idxPvt = b
-			magPiv = magB
 		}
 	}
 	return
