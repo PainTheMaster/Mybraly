@@ -33,7 +33,7 @@ func CompositionIsotopePatternPlain(C chemistry.ChemComposition) (isotopePattern
 			}
 			//Here, temporal pattern has to be marged, and isotopePattern is update
 			for idxMerged := 1; idxMerged <= len(tempPattern)-1; idxMerged++ {
-				DummyIsotopeMarge(&tempPattern[0], tempPattern[idxMerged])
+				isotopeMarge(&tempPattern[0], tempPattern[idxMerged])
 			}
 			isotopePattern = tempPattern[0]
 		}

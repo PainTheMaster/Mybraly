@@ -9,11 +9,7 @@ const (
 	methodBoudary = 16
 )
 
-//DummyIsotopeMarge is a a dummy function
-func DummyIsotopeMarge(ptrAddedTo *chemistry.Isotopes, addedFrom chemistry.Isotopes) {
-	isotopeMarge(ptrAddedTo, addedFrom)
-}
-
+//isotopeMerge merges two isotoep patterns. If match in mass is found the intensity of the element in addedFrom is added to the corresponding element in  *ptrAddedTo
 func isotopeMarge(ptrAddedTo *chemistry.Isotopes, addedFrom chemistry.Isotopes) {
 	addedTo := *ptrAddedTo
 
