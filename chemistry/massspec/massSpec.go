@@ -38,31 +38,12 @@ func CompositionIsotopePattern(C chemistry.ChemComposition) (isotopePattern chem
 
 	//Each composing element: count and sort
 	for _, component := range C {
-		countComp := component.Count
-		compIsotopePatt := component.Elem.IsotopPattern
+		componentCount := component.Count
+		componentIsotopePatt := component.Elem.IsotopPattern
 		//Each atom of the element
-		for coutAtom := 1; coutAtom <= countComp; coutAtom++ {
+		for coutAtom := 1; coutAtom <= componentCount; coutAtom++ {
 			//Each newly added isotope
-			tempPattern := make([]chemistry.Isotopes, compIsotopePatt.Length())
-			for row := range tempPattern {
-				tempPattern[row] = make(chemistry.Isotopes, len(isotopePattern))
-				for idxPeaks := range isotopePattern {
-					tempPattern[row][idxPeaks] = isotopePattern[idxPeaks]
-				}
-			}
-			//Now, add atoms: each isotopes
-			for idxAddIsotope, addIsotope := range compIsotopePatt {
-				//Manipulating all preexisting isotopologues: adding the mass and calculating the abundance
-				for idxPeaks := range tempPattern[idxAddIsotope] {
-					tempPattern[idxAddIsotope][idxPeaks].Abundance *= addIsotope.Abundance
-					tempPattern[idxAddIsotope][idxPeaks].Mass += addIsotope.Mass
-				}
-			}
-			//Here, temporal pattern has to be marged, and isotopePattern is update
-			for idxMerged := 1; idxMerged <= len(tempPattern)-1; idxMerged++ {
-				isotopeMarge(&tempPattern[0], tempPattern[idxMerged])
-			}
-			isotopePattern = tempPattern[0]
+			isotopePattern = IsotopePatternCombination(isotopePattern, componentIsotopePatt)
 		}
 	}
 	return isotopePattern
