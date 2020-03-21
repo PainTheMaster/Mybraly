@@ -12,7 +12,7 @@ type ChemCollectionInterf interface {
 //ChemCollection is a bundle of chemical characteristics common to atoms, fragments and so on
 type ChemCollection struct {
 	Symbol         string
-	IsotopPattern  Isotopes
+	IsotopePattern Isotopes
 	FormularWeight float64
 }
 
@@ -203,7 +203,7 @@ func (frag Fragment) ChemComposition() ChemComposition {
 
 //IsotopePattern returns isotope pattern of the fragment
 func (frag Fragment) IsotopePattern() Isotopes {
-	return frag.IsotopPattern
+	return frag.ChemCollection.IsotopePattern
 }
 
 //FormularWeight returns formular weight of the fragment
@@ -228,7 +228,7 @@ func (molec Molecule) ChemComposition() ChemComposition {
 
 //IsotopePattern returns isotope pattern of the molecule
 func (molec Molecule) IsotopePattern() Isotopes {
-	return molec.IsotopPattern
+	return molec.ChemCollection.IsotopePattern
 }
 
 //FormularWeight returns formular weight of the molecule

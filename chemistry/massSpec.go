@@ -1,17 +1,17 @@
 package chemistry
 
 import (
-	"PainTheMaster/mybraly/chemistry"
 	"PainTheMaster/mybraly/order"
+	"math"
 )
 
 //IsotopePatternCombination combines two isotope pattern
-func IsotopePatternCombination(isotopePatternTo, isotopePatternFrom chemistry.Isotopes) (isotopePattern chemistry.Isotopes) {
+func IsotopePatternCombination(isotopePatternTo, isotopePatternFrom Isotopes) (isotopePattern Isotopes) {
 	isotopePattern = isotopePatternTo
 
-	tempPattern := make([]chemistry.Isotopes, isotopePatternFrom.Length())
+	tempPattern := make([]Isotopes, isotopePatternFrom.Length())
 	for row := range tempPattern {
-		tempPattern[row] = make(chemistry.Isotopes, isotopePattern.Length())
+		tempPattern[row] = make(Isotopes, isotopePattern.Length())
 		for idxPeaks := range isotopePattern {
 			tempPattern[row][idxPeaks] = isotopePattern[idxPeaks]
 		}
@@ -33,16 +33,16 @@ func IsotopePatternCombination(isotopePatternTo, isotopePatternFrom chemistry.Is
 }
 
 //CompositionIsotopePattern calculates isotope pattern of a collection of atoms with a ChemComponent C
-func CompositionIsotopePattern(C chemistry.ChemComposition) (isotopePattern chemistry.Isotopes) {
+func CompositionIsotopePattern(C ChemComposition) (isotopePattern Isotopes) {
 	//	C[0].Elem
-	isotopePattern = make(chemistry.Isotopes, 1)
+	isotopePattern = make(Isotopes, 1)
 	isotopePattern[0].Mass = 0.0
 	isotopePattern[0].Abundance = 1.0
 
 	//Each composing element: count and sort
 	for _, component := range C {
 		componentCount := component.Count
-		componentIsotopePatt := component.Elem.IsotopPattern
+		componentIsotopePatt := component.Elem.ChemCollection.IsotopePattern
 		//Each atom of the element
 		for coutAtom := 1; coutAtom <= componentCount; coutAtom++ {
 			//Each newly added isotope
@@ -52,13 +52,13 @@ func CompositionIsotopePattern(C chemistry.ChemComposition) (isotopePattern chem
 	return isotopePattern
 }
 
-//IosotpePatternCutOffNum cuts off the IsotopePattern cuts off *prtIsotPattern by intensity.
+//IsotopePatternCutOffNum cuts off the IsotopePattern cuts off *prtIsotPattern by intensity.
 //Only top num peaks survive.
-func IosotpePatternCutOffNum(prtIsotPattern *chemistry.Isotopes, num int) {
-	isoPattern := *prtIsotPattern
+func IsotopePatternCutOffNum(prtIsotopePattern *Isotopes, num int) {
+	isoPattern := *prtIsotopePattern
 
 	surrogateFuncAbundReverse := func(tobeCompared order.Sorter, i int, j int) (ans int) {
-		asserted := tobeCompared.(chemistry.Isotopes)
+		asserted := tobeCompared.(Isotopes)
 		ans = asserted.CompareAbund(i, j) * (-1)
 		return
 	}
@@ -69,16 +69,16 @@ func IosotpePatternCutOffNum(prtIsotPattern *chemistry.Isotopes, num int) {
 
 	order.QuickSort(isoPattern)
 
-	*prtIsotPattern = isoPattern
+	*prtIsotopePattern = isoPattern
 }
 
 //IosotpePatternCutOffTotalAbund cuts off the by total abundance percentage.
 //Maximum sum of discarded peaks is not more than discardedAbund
-func IosotpePatternCutOffTotalAbund(prtIsotPattern *chemistry.Isotopes, pctDiscardedAbund float64) {
-	isoPattern := *prtIsotPattern
+func IosotpePatternCutOffTotalAbund(prtIsotopePattern *Isotopes, pctDiscardedAbund float64) {
+	isoPattern := *prtIsotopePattern
 
 	surrogateFuncAbundReverse := func(tobeCompared order.Sorter, i int, j int) (ans int) {
-		asserted := tobeCompared.(chemistry.Isotopes)
+		asserted := tobeCompared.(Isotopes)
 		ans = asserted.CompareAbund(i, j) * (-1)
 		return
 	}
@@ -103,16 +103,16 @@ func IosotpePatternCutOffTotalAbund(prtIsotPattern *chemistry.Isotopes, pctDisca
 
 	isoPattern = isoPattern[0 : idxCutOff+1 : idxCutOff+1]
 	order.QuickSort(isoPattern)
-	*prtIsotPattern = isoPattern
+	*prtIsotopePattern = isoPattern
 
 }
 
 //IosotpePatternCutOffThreshold cuts off by threshold: percentage vs the biggest peak.
-func IosotpePatternCutOffThreshold(prtIsotPattern *chemistry.Isotopes, pctThreshVsBiggest float64) {
-	isoPattern := *prtIsotPattern
+func IosotpePatternCutOffThreshold(prtIsotopePattern *Isotopes, pctThreshVsBiggest float64) {
+	isoPattern := *prtIsotopePattern
 
 	surrogateFuncAbundReverse := func(tobeCompared order.Sorter, i int, j int) (ans int) {
-		asserted := tobeCompared.(chemistry.Isotopes)
+		asserted := tobeCompared.(Isotopes)
 		ans = asserted.CompareAbund(i, j) * (-1)
 		return
 	}
@@ -128,5 +128,74 @@ func IosotpePatternCutOffThreshold(prtIsotPattern *chemistry.Isotopes, pctThresh
 
 	isoPattern = isoPattern[0 : idxCutOff+1 : idxCutOff+1]
 	order.QuickSort(isoPattern)
-	*prtIsotPattern = isoPattern
+	*prtIsotopePattern = isoPattern
+}
+
+//IsotopePatternNormalization nomarizes isotope pattern
+func IsotopePatternNormalization(prtIsotopePattern *Isotopes) {
+	isotoPattern := *prtIsotopePattern
+	var abundTotal float64
+	abundTotal = 0
+	for _, isotope := range isotoPattern {
+		abundTotal += isotope.Abundance
+	}
+	scale := 1.0 / abundTotal
+	for _, isotope := range isotoPattern {
+		isotope.Abundance *= scale
+	}
+}
+
+//IsotopeRounding calculates rounded isotoper patterns
+func IsotopeRounding(isotopePattern Isotopes) (roundedPattern Isotopes) {
+
+	linearSearch := func(isotopes Isotopes, mass float64) (boolFound bool, idxFound int) {
+		var isotopeCompare Isotope
+		boolFound = false
+		for idxFound, isotopeCompare = range isotopes {
+			if isotopeCompare.Mass == mass {
+				boolFound = true
+				break
+			}
+		}
+		return
+	}
+
+	binarySearch := func(isotopes Isotopes, mass float64) (boolFound bool, idxFound int) {
+		const maxBinarySearchLength = 16
+
+		order.QuickSort(isotopes)
+		boolFound = false
+		ini := 0
+		end := isotopes.Length() - 1
+		for {
+			if isotopes.Length() <= maxBinarySearchLength {
+				boolFound, idxFound = linearSearch(isotopes, mass)
+				break
+			} else {
+				middle := ini + (end-ini)/2
+				if isotopes[middle].Mass > mass {
+					end = middle
+				} else if isotopes[middle].Mass < mass {
+					ini = middle
+				} else {
+					boolFound = true
+					idxFound = middle
+					break
+				}
+			}
+		}
+		return
+	}
+
+	for _, isotopeCompare := range isotopePattern {
+		roundedMass := math.Round(isotopeCompare.Mass)
+		boolFound, idxFound := binarySearch(roundedPattern, roundedMass)
+		if boolFound {
+			roundedPattern[idxFound].Abundance += isotopeCompare.Abundance
+		} else {
+			isotopeCompare.Mass = roundedMass
+			roundedPattern = append(roundedPattern, isotopeCompare)
+		}
+	}
+	return
 }

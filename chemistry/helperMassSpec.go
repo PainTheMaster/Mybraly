@@ -1,7 +1,6 @@
 package chemistry
 
 import (
-	"PainTheMaster/mybraly/chemistry"
 	"PainTheMaster/mybraly/order"
 )
 
@@ -10,7 +9,7 @@ const (
 )
 
 //isotopeMerge merges two isotoep patterns. If match in mass is found the intensity of the element in addedFrom is added to the corresponding element in  *ptrAddedTo
-func isotopeMarge(ptrAddedTo *chemistry.Isotopes, addedFrom chemistry.Isotopes) {
+func isotopeMarge(ptrAddedTo *Isotopes, addedFrom Isotopes) {
 	addedTo := *ptrAddedTo
 
 	for _, isotopeAdded := range addedFrom {
@@ -24,7 +23,7 @@ func isotopeMarge(ptrAddedTo *chemistry.Isotopes, addedFrom chemistry.Isotopes) 
 	*ptrAddedTo = addedTo
 }
 
-func isotopemassBinarySearch(pool chemistry.Isotopes, key chemistry.Isotope) (boolFound bool, idxFound int) {
+func isotopemassBinarySearch(pool Isotopes, key Isotope) (boolFound bool, idxFound int) {
 	order.QuickSort(pool)
 	ini := 0
 	end := len(pool) - 1
@@ -52,7 +51,7 @@ func isotopemassBinarySearch(pool chemistry.Isotopes, key chemistry.Isotope) (bo
 	return
 }
 
-func linearSearch(isotopePattern chemistry.Isotopes, singleIsotope chemistry.Isotope) (boolFound bool, idxFound int) {
+func linearSearch(isotopePattern Isotopes, singleIsotope Isotope) (boolFound bool, idxFound int) {
 	boolFound = false
 	for idx, isotope := range isotopePattern {
 		if isotope.Mass == singleIsotope.Mass {
