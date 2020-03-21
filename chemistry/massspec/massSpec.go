@@ -1,6 +1,9 @@
-package massspec
+package chemistry
 
-import "PainTheMaster/mybraly/chemistry"
+import (
+	"PainTheMaster/mybraly/chemistry"
+	"PainTheMaster/mybraly/order"
+)
 
 //IsotopePatternCombination combines two isotope pattern
 func IsotopePatternCombination(isotopePatternTo, isotopePatternFrom chemistry.Isotopes) (isotopePattern chemistry.Isotopes) {
@@ -47,4 +50,83 @@ func CompositionIsotopePattern(C chemistry.ChemComposition) (isotopePattern chem
 		}
 	}
 	return isotopePattern
+}
+
+//IosotpePatternCutOffNum cuts off the IsotopePattern cuts off *prtIsotPattern by intensity.
+//Only top num peaks survive.
+func IosotpePatternCutOffNum(prtIsotPattern *chemistry.Isotopes, num int) {
+	isoPattern := *prtIsotPattern
+
+	surrogateFuncAbundReverse := func(tobeCompared order.Sorter, i int, j int) (ans int) {
+		asserted := tobeCompared.(chemistry.Isotopes)
+		ans = asserted.CompareAbund(i, j) * (-1)
+		return
+	}
+
+	order.PartialQuickSortFunc(isoPattern, 0, isoPattern.Length()-1, surrogateFuncAbundReverse)
+
+	isoPattern = isoPattern[0:num:num]
+
+	order.QuickSort(isoPattern)
+
+	*prtIsotPattern = isoPattern
+}
+
+//IosotpePatternCutOffTotalAbund cuts off the by total abundance percentage.
+//Maximum sum of discarded peaks is not more than discardedAbund
+func IosotpePatternCutOffTotalAbund(prtIsotPattern *chemistry.Isotopes, pctDiscardedAbund float64) {
+	isoPattern := *prtIsotPattern
+
+	surrogateFuncAbundReverse := func(tobeCompared order.Sorter, i int, j int) (ans int) {
+		asserted := tobeCompared.(chemistry.Isotopes)
+		ans = asserted.CompareAbund(i, j) * (-1)
+		return
+	}
+
+	order.PartialQuickSortFunc(isoPattern, 0, isoPattern.Length()-1, surrogateFuncAbundReverse)
+
+	var totalAbund float64
+	totalAbund = 0.0
+	for _, isotope := range isoPattern {
+		totalAbund += isotope.Abundance
+	}
+
+	cutOffSum := totalAbund * (pctDiscardedAbund / 100.0)
+
+	var cutOffAbund float64
+	var idxCutOff int
+	cutOffAbund = 0.0
+	for idxCutOff = isoPattern.Length() - 1; cutOffAbund <= cutOffSum; idxCutOff-- {
+		cutOffAbund += isoPattern[idxCutOff].Abundance
+	}
+	idxCutOff++
+
+	isoPattern = isoPattern[0 : idxCutOff+1 : idxCutOff+1]
+	order.QuickSort(isoPattern)
+	*prtIsotPattern = isoPattern
+
+}
+
+//IosotpePatternCutOffThreshold cuts off by threshold: percentage vs the biggest peak.
+func IosotpePatternCutOffThreshold(prtIsotPattern *chemistry.Isotopes, pctThreshVsBiggest float64) {
+	isoPattern := *prtIsotPattern
+
+	surrogateFuncAbundReverse := func(tobeCompared order.Sorter, i int, j int) (ans int) {
+		asserted := tobeCompared.(chemistry.Isotopes)
+		ans = asserted.CompareAbund(i, j) * (-1)
+		return
+	}
+
+	order.PartialQuickSortFunc(isoPattern, 0, isoPattern.Length()-1, surrogateFuncAbundReverse)
+
+	threshAbund := isoPattern[0].Abundance * (pctThreshVsBiggest / 100.0)
+
+	var idxCutOff int
+	for idxCutOff = isoPattern.Length() - 1; isoPattern[idxCutOff].Abundance <= threshAbund; idxCutOff-- {
+	}
+	idxCutOff++
+
+	isoPattern = isoPattern[0 : idxCutOff+1 : idxCutOff+1]
+	order.QuickSort(isoPattern)
+	*prtIsotPattern = isoPattern
 }

@@ -51,6 +51,20 @@ func (isotopes Isotopes) Length() int {
 	return len(isotopes)
 }
 
+//CompareAbund compares the abundance of the constituting peaks of isotopes
+//If the member i is biggger j, it retuurns 1, if equal 0, and if smaller -1
+func (isotopes Isotopes) CompareAbund(i int, j int) int {
+	var ans int
+	if isotopes[i].Abundance > isotopes[j].Abundance {
+		ans = 1
+	} else if isotopes[i].Abundance < isotopes[j].Abundance {
+		ans = -1
+	} else {
+		ans = 0
+	}
+	return ans
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////       Element      ////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -168,18 +182,56 @@ func (C ChemComposition) Length() int {
 ////////////////////////////////////////////        Structures      ////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//Structures is a inerface that is common to entities with structures
+//Structures has to haave a ChemComposition() that returns the composition of the structure
+type Structures interface {
+	ChemComposition() ChemComposition
+	IsotopePattern() Isotopes
+	FormularWeight() float64
+}
+
 //Fragment represents a fragment
 type Fragment struct {
 	ChemCollection
 	Composition ChemComposition
 }
 
+//ChemComposition of a fragment returns ChemComposition of the fragment
+func (frag Fragment) ChemComposition() ChemComposition {
+	return frag.Composition
+}
+
+//IsotopePattern returns isotope pattern of the fragment
+func (frag Fragment) IsotopePattern() Isotopes {
+	return frag.IsotopPattern
+}
+
+//FormularWeight returns formular weight of the fragment
+func (frag Fragment) FormularWeight() float64 {
+	return frag.ChemCollection.FormularWeight
+}
+
 //Fragments is a collection of Fragments
 type Fragments []Fragment
 
-//Molecular represents a molecule
-type Molecular struct {
+//Molecule represents a molecule
+type Molecule struct {
 	ChemCollection
-	Fragments       Fragments
-	ChemComposition ChemComposition
+	Fragments   Fragments
+	Composition ChemComposition
+}
+
+//ChemComposition of a molecule returns ChemComposition of the fragment
+func (molec Molecule) ChemComposition() ChemComposition {
+	return molec.Composition
+}
+
+//IsotopePattern returns isotope pattern of the molecule
+func (molec Molecule) IsotopePattern() Isotopes {
+	return molec.IsotopPattern
+}
+
+//FormularWeight returns formular weight of the molecule
+func (molec Molecule) FormularWeight() float64 {
+	return molec.ChemCollection.FormularWeight
 }

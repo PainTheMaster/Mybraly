@@ -1,4 +1,4 @@
-package massspec
+package chemistry
 
 import (
 	"PainTheMaster/mybraly/chemistry"
