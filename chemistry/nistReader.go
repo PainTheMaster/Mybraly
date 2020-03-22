@@ -9,6 +9,7 @@ import (
 	"strconv"
 )
 
+//PeriodicTableMaker reads NIST's isotope file and make a PefiodicTable pt containing a list of stable isotopes
 func PeriodicTableMaker(fileName string) (pt PeriodicTable) {
 	nistFile, err := os.Open(fileName)
 	defer nistFile.Close()
@@ -32,11 +33,6 @@ func PeriodicTableMaker(fileName string) (pt PeriodicTable) {
 		}
 	}
 
-	return
-}
-
-func DummyExtElem(br *bufio.Reader) (elem Element, naturalIsotpope bool, err error) {
-	elem, naturalIsotpope, err = extractElement(br)
 	return
 }
 
@@ -82,7 +78,7 @@ func extractElement(br *bufio.Reader) (elem Element, naturalIsotpope bool, err e
 }
 
 func extractAtomicWeight(line []byte) (atomicWeight float64) {
-	trimmed := bytes.TrimLeft(line, "Standard Atomic Weight = ")
+	trimmed := bytes.Replace(line, []byte("Standard Atomic Weight = "), []byte(""), -1)
 	lParen := bytes.Index(trimmed, []byte("("))
 	if lParen >= 0 {
 		trimmed = append(trimmed[0:lParen], trimmed[lParen+1:]...)
@@ -132,7 +128,7 @@ func extractAtomicWeight(line []byte) (atomicWeight float64) {
 }
 
 func extrractIsotopicComposition(line []byte) (isotopicComposition float64) {
-	trimmed := bytes.TrimLeft(line, "Isotopic Composition = ")
+	trimmed := bytes.Replace(line, []byte("Isotopic Composition = "), []byte(""), -1)
 	lParen := bytes.Index(trimmed, []byte("("))
 	if lParen >= 0 {
 		trimmed = append(trimmed[0:lParen], trimmed[lParen+1:]...)
@@ -154,7 +150,7 @@ func extrractIsotopicComposition(line []byte) (isotopicComposition float64) {
 }
 
 func extrractAtomicMass(line []byte) (atomicMass float64) {
-	trimmed := bytes.TrimLeft(line, "Relative Atomic Mass = ")
+	trimmed := bytes.Replace(line, []byte("Relative Atomic Mass = "), []byte(""), -1)
 	lParen := bytes.Index(trimmed, []byte("("))
 	if lParen >= 0 {
 		trimmed = append(trimmed[0:lParen], trimmed[lParen+1:]...)
@@ -177,7 +173,7 @@ func extrractAtomicMass(line []byte) (atomicMass float64) {
 }
 
 func extractMassNumber(line []byte) (massNumber int) {
-	trimmed := bytes.TrimLeft(line, "Mass Number = ")
+	trimmed := bytes.Replace(line, []byte("Mass Number = "), []byte(""), -1)
 	var err error
 	massNumber, err = strconv.Atoi(string(trimmed))
 	if err != nil {
@@ -187,7 +183,8 @@ func extractMassNumber(line []byte) (massNumber int) {
 }
 
 func extractAtomicSymbol(line []byte) (atomicSymbol string) {
-	trimmed := bytes.TrimLeft(line, "Atomic Symbol = ")
+	fmt.Println("atomic symbol line:", string(line))
+	trimmed := bytes.Replace(line, []byte("Atomic Symbol = "), []byte(""), -1)
 	atomicSymbol = string(trimmed)
 	if atomicSymbol == "D" || atomicSymbol == "T" {
 		atomicSymbol = "H"
@@ -196,7 +193,7 @@ func extractAtomicSymbol(line []byte) (atomicSymbol string) {
 }
 
 func extractAtomicNumber(line []byte) (atomicNumber int) {
-	trimmed := bytes.TrimLeft(line, "Atomic Number = ")
+	trimmed := bytes.Replace(line, []byte("Atomic Number = "), []byte(""), -1)
 	var err error
 	atomicNumber, err = strconv.Atoi(string(trimmed))
 	if err != nil {
