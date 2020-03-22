@@ -1,0 +1,14 @@
+Fragment Name = A
+Fragment Composition = C19H22O4N7P
+
+Fragment Name = C
+Fragment Composition = C18H22O5N5P
+
+Fragment Name = G
+Fragment Composition = C23H27O6N8P
+
+Fragment Name = T
+Fragment Composition = C12H19O5N4P
+
+Fragment Name = GNp
+Fragment Composition = C28H31O8N8P
