@@ -109,5 +109,6 @@ func binarySearchMPerZ(pks Peaks, target float64, maxerr float64) (match Peaks) 
 			match[i] = pks[from+i]
 		}
 	}
+	match.SortByMPerZProxim(target)
 	return
 }

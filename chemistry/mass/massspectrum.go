@@ -161,6 +161,34 @@ func (pks Peaks) SortByCluster() {
 	order.PartialQuickSortFunc(pks, 0, pks.Length()-1, compareCluster)
 }
 
+//SortByMPerZProxim sorts pks according to proximity to target m/z
+func (pks Peaks) SortByMPerZProxim(targetMPerZ float64) {
+	compareProximity := func(srt order.Sorter, i int, j int) (result int) {
+		asserted := srt.(Peaks)
+		proxISq := asserted[i].MPerZ - targetMPerZ
+		proxISq *= proxISq
+
+		proxJSq := asserted[j].MPerZ - targetMPerZ
+		proxJSq *= proxISq
+
+		if proxISq > proxJSq {
+			result = 1
+		} else if proxISq < proxJSq {
+			result = -1
+		} else {
+			if asserted[i].Intens > asserted[j].Intens {
+				result = -1
+			} else if asserted[i].Intens < asserted[j].Intens {
+				result = 1
+			} else {
+				result = 0
+			}
+		}
+		return
+	}
+	order.PartialQuickSortFunc(pks, 0, pks.Length(), compareProximity)
+}
+
 //IDConversion returns a int slice in which ID-index table is contained.
 //idSeq[ID] == index in pks
 func (pks Peaks) IDConversion() (idSeq []int) {
