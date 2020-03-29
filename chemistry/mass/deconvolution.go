@@ -6,22 +6,22 @@ type DeconvolutionParams struct {
 	ChargeMin       int
 	ChargeMax       int
 	MinimumPeaks    int
-	additionalMass  float64
+	AdditionalMass  float64
 	MaxMPerZErr     float64
 	NoizeLevel      float64
 }
 
 //Clusterizer clusters peaks from pks
-func Clusterizer(pks Peaks, nimimumPeaks int, maxError float64, noizeLevel float64, chargeMin int, chargeMax int, additionalMass float64) {
+func Clusterizer(pks Peaks, params DeconvolutionParams) {
 	pks.SortByMPerZ()
 
 	//multiCharge corresponds to signals corrected by charge and cation mass
-	multiCharge := make([]Peaks, chargeMax-chargeMin+1)
+	multiCharge := make([]Peaks, params.ChargeMax-params.ChargeMin+1)
 	for i := range multiCharge {
 		multiCharge[i] = make(Peaks, pks.Length())
 		for j := range multiCharge[i] {
 			multiCharge[i][j] = pks[j]
-			multiCharge[i][j].MPerZ = (pks[j].MPerZ - additionalMass) * float64(chargeMin+i)
+			multiCharge[i][j].MPerZ = (pks[j].MPerZ - params.AdditionalMass) * float64(params.ChargeMin+i)
 		}
 	}
 
