@@ -59,7 +59,7 @@ func binarySearchMPerZ(pks Peaks, target float64, maxerr float64) (match Peaks) 
 
 	left := 0
 	right := pks.Length() - 1
-	middle := (left + right) / 2
+	middle := left + (right-left)/2
 
 	match = nil
 
@@ -85,10 +85,10 @@ func binarySearchMPerZ(pks Peaks, target float64, maxerr float64) (match Peaks) 
 			}
 		} else if compareWithError(middle) > 0 {
 			left = middle
-			middle = (left + right) / 2
+			middle = left + (right-left)/s
 		} else if compareWithError(middle) < 0 {
 			right = middle
-			middle = (left + right) / 2
+			middle = left + (right-left)/2
 		} else {
 			from = middle
 			to = middle
