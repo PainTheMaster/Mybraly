@@ -1,10 +1,10 @@
 package order
 
-//SortableIntSlice is a slice of int that is sortable
-type SortableIntSlice []int
+//SortableInt is a slice of int that is sortable
+type SortableInt []int
 
 //Compare compares
-func (sis SortableIntSlice) Compare(i int, j int) (result int) {
+func (sis SortableInt) Compare(i int, j int) (result int) {
 	if sis[i] > sis[j] {
 		result = 1
 	} else if sis[i] < sis[j] {
@@ -16,11 +16,11 @@ func (sis SortableIntSlice) Compare(i int, j int) (result int) {
 }
 
 //Swap swaps
-func (sis SortableIntSlice) Swap(i int, j int) {
+func (sis SortableInt) Swap(i int, j int) {
 	sis[i], sis[j] = sis[j], sis[i]
 }
 
 //Length returns length of the slice
-func (sis SortableIntSlice) Length() int {
+func (sis SortableInt) Length() int {
 	return len(sis)
 }

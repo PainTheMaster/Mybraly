@@ -20,6 +20,8 @@ type Peak struct {
 const (
 	//ClusterUnAssigned is a claster for unassigned peak
 	ClusterUnAssigned = -1
+	//SearchNotFound is used if a result is not found in a search
+	SearchNotFound = -1
 )
 
 //Peaks is a slice of Peaks
@@ -202,7 +204,7 @@ func (pks Peaks) IDConversion() (idSeq []int) {
 //BinarySearchMPerZ of pks finds peaks that matches target within the maxerr range
 //The peaks has to be sorted before being subjected to this search function
 func (pks Peaks) BinarySearchMPerZ(target float64, maxerr float64) (match Peaks) {
-	const boundaryToLinear = 4
+	const boundaryToLinear = 16
 
 	//cmpreWithError returns 1 if target is biggerthan the element i
 	//returns -1 if target is smaller, and 0 if equal
@@ -218,13 +220,13 @@ func (pks Peaks) BinarySearchMPerZ(target float64, maxerr float64) (match Peaks)
 	}
 
 	linearSearch := func(searchFrom int, searchTo int) (result int) {
-		const resultNotFound = -1
+
 		for idxSearch := searchFrom; idxSearch <= searchTo; idxSearch++ {
 			if compareWithError(idxSearch) == 0 {
 				result = idxSearch
 				break
 			} else if idxSearch == searchTo && compareWithError(idxSearch) != 0 {
-				result = resultNotFound
+				result = SearchNotFound
 			}
 		}
 		return
@@ -240,18 +242,18 @@ func (pks Peaks) BinarySearchMPerZ(target float64, maxerr float64) (match Peaks)
 	to := -1
 
 	for {
-		if to-from+1 <= boundaryToLinear {
-			idxMatch := linearSearch(from, to)
-			if idxMatch < 0 {
-				from, to = -1, -1
+		if right-left+1 <= boundaryToLinear {
+			idxMatch := linearSearch(left, right)
+			if idxMatch == SearchNotFound {
+				from, to = SearchNotFound, SearchNotFound
 			} else {
 				from = idxMatch
 				to = idxMatch
 
-				for compareWithError(from-1) == 0 {
+				for compareWithError(from-1) == 0 && (from-1) >= 0 {
 					from--
 				}
-				for compareWithError(to+1) == 0 {
+				for compareWithError(to+1) == 0 && (to+1) <= pks.Length()-1 {
 					to++
 				}
 				break
@@ -276,7 +278,7 @@ func (pks Peaks) BinarySearchMPerZ(target float64, maxerr float64) (match Peaks)
 		}
 	}
 
-	if from >= 0 {
+	if from != SearchNotFound {
 		match = make(Peaks, to-from+1)
 		for i := 0; from+i <= to; i++ {
 			match[i] = pks[from+i]
@@ -290,11 +292,36 @@ func (pks Peaks) BinarySearchMPerZ(target float64, maxerr float64) (match Peaks)
 /////////////////////////////////////////       Cluster      //////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Clusters represents clustrs of peaks correpsond to one chemical speceis in multiple valences
-type Clusters struct {
+// Cluster represents clustrs of peaks correpsond to one chemical speceis in multiple valences
+type Cluster struct {
 	peaks          Peaks
 	monoisotopic   float64
 	mostAbundant   float64
 	obsCharge      []int
 	dominantCharge int
+}
+
+//Clusters is a slice of cluster
+type Clusters []Cluster
+
+//Compare compares i and j
+func (clusts Clusters) Compare(i int, j int) (result int) {
+	if clusts[i].monoisotopic > clusts[j].monoisotopic {
+		result = 1
+	} else if clusts[i].monoisotopic < clusts[j].monoisotopic {
+		result = -1
+	} else {
+		result = 0
+	}
+	return
+}
+
+//Swap swaps
+func (clusts Clusters) Swap(i int, j int) {
+	clusts[i], clusts[j] = clusts[j], clusts[i]
+}
+
+//Length returns the length of the clusters
+func (clusts Clusters) Length() int {
+	return len(clusts)
 }
