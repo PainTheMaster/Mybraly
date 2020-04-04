@@ -1,5 +1,10 @@
 package mass
 
+import (
+	"PainTheMaster/mybraly/order"
+	"math"
+)
+
 //DeconvolutionParams is a bundle of parameters for deconvolution
 type DeconvolutionParams struct {
 	ClustersMax     int
@@ -50,12 +55,12 @@ func (pks Peaks) noizeCut(noizeLevel float64) (trimmed Peaks) {
 
 //fit calculates fitting with a comb.
 //Sort the pks before use in m/z order
-func (pks Peaks) fit(targetID int, interval int, additionalMass float64, backward int, forward int, maxError float64) (accumulation float64, tempCluster Peaks) {
+func (pks Peaks) fit(targetID int, interval int, additionalMass float64, backward int, forward int, maxError float64) (accumulation float64, clusterPksID order.SortableIntSlice) {
 	idSeq := pks.IDConversion()
 	targetIndex := idSeq[targetID]
 
-	tempCluster = make(Peaks, 1)
-	tempCluster[0] = pks[targetIndex]
+	clusterPksID = make(order.SortableIntSlice, 1)
+	clusterPksID[0] = targetID
 
 	targetMPerZ := pks[targetIndex].MPerZ
 	comb := make([]float64, forward+backward+1)
@@ -71,11 +76,76 @@ func (pks Peaks) fit(targetID int, interval int, additionalMass float64, backwar
 		for j := range match {
 			if match[j].Cluster == ClusterUnAssigned {
 				accumulation += match[j].Intens
-				tempCluster = append(tempCluster, match[j])
+				clusterPksID = append(clusterPksID, match[i].ID)
 				break
 			}
 		}
 	}
 
+	order.QuickSort(clusterPksID)
+
+	return
+}
+
+func (pks Peaks) optim(targetID int, clusterPksID order.SortableIntSlice, interval int, additionalMass float64) (optimTargetMPerZ float64) {
+
+	idSeq := pks.IDConversion()
+
+	order.QuickSort(clusterPksID)
+
+	customCompare := func(srt order.Sorter, toBeComp int) (result int) {
+		asserted := srt.(order.SortableIntSlice)
+		if targetID < asserted[toBeComp] {
+			result = -1
+		} else if targetID > asserted[toBeComp] {
+			result = 1
+		} else {
+			result = 0
+		}
+		return
+	}
+
+	targetIdx := order.BinarySearch(clusterPksID, customCompare)
+
+	makeComb := func(targetMPerZ float64, backward int, forward int, additionalMass float64) (comb []float64) {
+		comb = make([]float64, backward+forward+1)
+		for i := 0; i <= backward+forward; i++ {
+			comb[i] = targetMPerZ + additionalMass*float64(i-backward)
+		}
+		return
+	}
+
+	fitness := func(comb []float64) (accumError float64) {
+		accumError = 0.0
+		for i := 0; i <= clusterPksID.Length()-1; i++ {
+			accumError += math.Abs(comb[i] - pks[idSeq[targetID]].MPerZ)
+		}
+		return
+	}
+
+	const (
+		shiftRatio   = 0.001
+		correctRatio = 0.1
+		repetition   = 10
+	)
+
+	targetMPerZ := pks[idSeq[targetID]].MPerZ
+
+	backward := targetIdx
+	forward := (clusterPksID.Length() - 1) - targetIdx
+
+	for cycle := 1; cycle <= repetition; cycle++ {
+		comb := makeComb(targetMPerZ, backward, forward, additionalMass)
+		shiftedMPerZ := targetMPerZ * (1.0 + shiftRatio)
+		shiftedComb := makeComb(shiftedMPerZ, backward, forward, additionalMass)
+
+		accumError := fitness(comb)
+		shiftedAccumError := fitness(shiftedComb)
+
+		differential := (shiftedAccumError - accumError) / (targetMPerZ * shiftRatio)
+		targetMPerZ -= correctRatio * differential
+	}
+
+	optimTargetMPerZ = targetMPerZ
 	return
 }
