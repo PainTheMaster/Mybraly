@@ -1,3 +1,4 @@
+/*Package chemistry defines what chemical entities, cf. atoms, molecules, have to have.*/
 package chemistry
 
 import "strings"

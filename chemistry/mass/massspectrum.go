@@ -288,6 +288,60 @@ func (pks Peaks) BinarySearchMPerZ(target float64, maxerr float64) (match Peaks)
 	return
 }
 
+//pks has to be sorted ID-wise beforehand
+func (pks Peaks) BinarySearchID(id int) (idxResult int) {
+	const boundaryToLinear = 16
+
+	idxResult = SearchNotFound
+
+	linearSearch := func(searchFrom, searchTo int) (idxResult int) {
+		for idxSearch := searchFrom; idxSearch <= searchTo; idxSearch++ {
+			if pks[idxSearch].ID == id {
+				idxResult = idxSearch
+				break
+			} else if idxSearch == searchTo && pks[idxSearch].ID != id {
+				idxResult = SearchNotFound
+			}
+		}
+		return
+	}
+
+	left := 0
+	right := pks.Length()
+	middle := left + (right-left)/2
+
+	for {
+		if right-left+1 <= boundaryToLinear {
+			idxResult = linearSearch(left, right)
+			break
+		} else if id < pks[middle].ID {
+			right = middle
+			middle = left + (right-left)/2
+		} else if pks[middle].ID < id {
+			left = middle
+			middle = left + (right-left)/2
+		} else {
+			idxResult = middle
+			break
+		}
+	}
+	return
+}
+
+//Delete deletes an element (*ptrPks)[idx] and make ptrPks shorter.
+func (ptrPks *Peaks) DeleteIdx(idx int) {
+	len := (*ptrPks).Length()
+
+	left := (*ptrPks)[0:idx:idx]
+	right := (*ptrPks)[idx+1 : len : (len - 1 - idx)]
+	*ptrPks = append(left, right...)
+}
+
+func (ptrPks *Peaks) DeleteID(id int) {
+	idxDel := (*ptrPks).BinarySearchID(id)
+	ptrPks.DeleteIdx(idxDel)
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////       Cluster      //////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
