@@ -57,7 +57,7 @@ func (pks Peaks) Deconvolution(params DeconvolutionParams) (clusters Clusters) {
 	for numClust := 0; numClust <= params.ClustersMax-1; numClust++ {
 		//TODO: numClust is increased only if the roop suceeded to make a cluseter
 		//TODO: check the fitting of the unchecked peak with an ID of trimed[unchecked].ID through all charges.
-		for ; trimed[focus].Cluster != ClusterUnAssigned; focus++ {
+		for ; trimed[focus].ClusterID != ClusterUnAssigned; focus++ {
 			if focus == trimed.Length()-1 {
 				break
 			}
@@ -70,7 +70,7 @@ func (pks Peaks) Deconvolution(params DeconvolutionParams) (clusters Clusters) {
 
 			for _, clustPeak := range newCluster.peaks {
 				idxAssign := idConvTrimed[clustPeak.ID]
-				trimed[idxAssign].Cluster = clusters.Length()
+				trimed[idxAssign].ClusterID = clusters.Length()
 
 				idxDel := idConvCharge[clustPeak.ID]
 				for i := range multiCharge {
@@ -159,7 +159,7 @@ func (pks Peaks) fitByID(targetID int, backward int, forward int, params Deconvo
 		match.SortByIntensReverse()
 
 		for j := range match {
-			if match[j].Cluster == ClusterUnAssigned {
+			if match[j].ClusterID == ClusterUnAssigned {
 				accumulation += match[j].Intens
 				clusterPksID = append(clusterPksID, match[i].ID)
 				break
@@ -187,7 +187,7 @@ func (pks Peaks) fitByMPerZ(targetMPerZ float64, backward int, forward int, para
 	clusterPksID = make(order.SortableInt, 1)
 	match := pks.BinarySearchMPerZ(targetMPerZ, maxError)
 	match.SortByIntensReverse()
-	clusterPksID[0] = match[0].Cluster
+	clusterPksID[0] = match[0].ClusterID
 
 	comb := make([]float64, forward+backward+1)
 	for i := 0; i <= forward+backward; i++ {
@@ -200,7 +200,7 @@ func (pks Peaks) fitByMPerZ(targetMPerZ float64, backward int, forward int, para
 		match.SortByIntensReverse()
 
 		for j := range match {
-			if match[j].Cluster == ClusterUnAssigned {
+			if match[j].ClusterID == ClusterUnAssigned {
 				accumulation += match[j].Intens
 				clusterPksID = append(clusterPksID, match[i].ID)
 				break

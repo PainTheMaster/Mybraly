@@ -10,11 +10,11 @@ import (
 
 //Peak represents each peaks in the mass spectrum
 type Peak struct {
-	ID      int // ID has to start from 0 and continuous. The sequence of ID has to be identical to MPerZ
-	MPerZ   float64
-	Intens  float64
-	Cluster int
-	OverLap bool
+	ID        int // ID has to start from 0 and continuous. The sequence of ID has to be identical to MPerZ
+	MPerZ     float64
+	Intens    float64
+	ClusterID int
+	Overlap   bool
 }
 
 const (
@@ -33,8 +33,8 @@ func (pks Peaks) Reset() {
 	pks.SortByMPerZ()
 	for i := range pks {
 		pks[i].ID = i
-		pks[i].Cluster = ClusterUnAssigned
-		pks[i].OverLap = false
+		pks[i].ClusterID = ClusterUnAssigned
+		pks[i].Overlap = false
 	}
 }
 
