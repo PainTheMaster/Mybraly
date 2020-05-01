@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	//ClusterNotFormed is put in variables whose value cannnot be negative (e.g. index, mass) if a clusterrizing function fails to form a cluster.
 	ClusterNotFormed = -1
 )
 
@@ -21,7 +22,7 @@ type DeconvolutionParams struct {
 	IgnoreLevel     float64
 }
 
-//This function picks strongest unmarked peak and cheks fitness to a comb functions corresponding to charges given with Deconvolution Params.
+//Deconvolution picks strongest unmarked peak and cheks fitness to a comb functions corresponding to charges given with Deconvolution Params
 //The most fitting peaks are put into a cluster.
 func (pks Peaks) Deconvolution(params DeconvolutionParams) (clusters Clusters) {
 	////////////////////////Consts and helpers start from here////////////////////////
@@ -108,7 +109,6 @@ func clusterizer(pksSlice []Peaks, target Peak, backward, forward int, params De
 
 	if idxAccumBiggest == ClusterNotFormed {
 		retCluster.peaks = nil
-		retCluster.dominantCharge = ClusterNotFormed
 		retCluster.monoisotopic = ClusterNotFormed
 		retCluster.mostAbundant = ClusterNotFormed
 		retCluster.obsCharge = nil

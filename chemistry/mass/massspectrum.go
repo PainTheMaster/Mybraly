@@ -288,6 +288,7 @@ func (pks Peaks) BinarySearchMPerZ(target float64, maxerr float64) (match Peaks)
 	return
 }
 
+//BinarySearchID find and returns an index of a peak whose ID matches an argument id
 //pks has to be sorted ID-wise beforehand
 func (pks Peaks) BinarySearchID(id int) (idxResult int) {
 	const boundaryToLinear = 16
@@ -328,18 +329,19 @@ func (pks Peaks) BinarySearchID(id int) (idxResult int) {
 	return
 }
 
-//Delete deletes an element (*ptrPks)[idx] and make ptrPks shorter.
-func (ptrPks *Peaks) DeleteIdx(idx int) {
-	len := (*ptrPks).Length()
+//DeleteIdx deletes an element (*pks)[idx] and make ptrPks shorter.
+func (pks *Peaks) DeleteIdx(idx int) {
+	len := (*pks).Length()
 
-	left := (*ptrPks)[0:idx:idx]
-	right := (*ptrPks)[idx+1 : len : (len - 1 - idx)]
-	*ptrPks = append(left, right...)
+	left := (*pks)[0:idx:idx]
+	right := (*pks)[idx+1 : len : (len - 1 - idx)]
+	*pks = append(left, right...)
 }
 
-func (ptrPks *Peaks) DeleteID(id int) {
-	idxDel := (*ptrPks).BinarySearchID(id)
-	ptrPks.DeleteIdx(idxDel)
+//DeleteID deletes an peak whose ID matches an arugment id
+func (pks *Peaks) DeleteID(id int) {
+	idxDel := (*pks).BinarySearchID(id)
+	pks.DeleteIdx(idxDel)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
