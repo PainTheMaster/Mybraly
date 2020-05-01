@@ -350,11 +350,11 @@ func (pks *Peaks) DeleteID(id int) {
 
 // Cluster represents clustrs of peaks correpsond to one chemical speceis in multiple valences
 type Cluster struct {
-	peaks          Peaks
-	monoisotopic   float64
-	mostAbundant   float64
-	obsCharge      []int
-	dominantCharge int
+	ComponentPeaks Peaks
+	Monoisotopic   float64
+	MostAbundant   float64
+	ObsCharge      []int
+	DominantCharge int
 }
 
 //Clusters is a slice of cluster
@@ -362,9 +362,9 @@ type Clusters []Cluster
 
 //Compare compares i and j
 func (clusts Clusters) Compare(i int, j int) (result int) {
-	if clusts[i].monoisotopic > clusts[j].monoisotopic {
+	if clusts[i].Monoisotopic > clusts[j].Monoisotopic {
 		result = 1
-	} else if clusts[i].monoisotopic < clusts[j].monoisotopic {
+	} else if clusts[i].Monoisotopic < clusts[j].Monoisotopic {
 		result = -1
 	} else {
 		result = 0

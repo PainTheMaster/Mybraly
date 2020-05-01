@@ -65,10 +65,10 @@ func (pks Peaks) Deconvolution(params DeconvolutionParams) (clusters Clusters) {
 
 		params.IgnoreLevel = trimed[focus].Intens * ThreshIntensVsMainPeak
 		newCluster := clusterizer(multiCharge, trimed[focus], numBackward, numForward, params)
-		if newCluster.peaks != nil {
+		if newCluster.ComponentPeaks != nil {
 			clusters = append(clusters, newCluster)
 
-			for _, clustPeak := range newCluster.peaks {
+			for _, clustPeak := range newCluster.ComponentPeaks {
 				idxAssign := idConvTrimed[clustPeak.ID]
 				trimed[idxAssign].ClusterID = clusters.Length()
 
@@ -108,17 +108,17 @@ func clusterizer(pksSlice []Peaks, target Peak, backward, forward int, params De
 	}
 
 	if idxAccumBiggest == ClusterNotFormed {
-		retCluster.peaks = nil
-		retCluster.monoisotopic = ClusterNotFormed
-		retCluster.mostAbundant = ClusterNotFormed
-		retCluster.obsCharge = nil
+		retCluster.ComponentPeaks = nil
+		retCluster.Monoisotopic = ClusterNotFormed
+		retCluster.MostAbundant = ClusterNotFormed
+		retCluster.ObsCharge = nil
 	} else {
-		retCluster.mostAbundant, clusterPksIDs[idxAccumBiggest], _, _ = pksSlice[idxAccumBiggest].expand(target.MPerZ, target.ID, clusterPksIDs[idxAccumBiggest], backward, forward, params)
-		retCluster.dominantCharge = params.ChargeMin + idxAccumBiggest
+		retCluster.MostAbundant, clusterPksIDs[idxAccumBiggest], _, _ = pksSlice[idxAccumBiggest].expand(target.MPerZ, target.ID, clusterPksIDs[idxAccumBiggest], backward, forward, params)
+		retCluster.DominantCharge = params.ChargeMin + idxAccumBiggest
 		idxMonoisotopic := (clusterPksIDs[idxAccumBiggest])[0]
-		retCluster.monoisotopic = (pksSlice[idxAccumBiggest])[idxMonoisotopic].MPerZ
+		retCluster.Monoisotopic = (pksSlice[idxAccumBiggest])[idxMonoisotopic].MPerZ
 		for _, idxPeak := range clusterPksIDs[idxAccumBiggest] {
-			retCluster.peaks = append(retCluster.peaks, (pksSlice[idxAccumBiggest])[idxPeak])
+			retCluster.ComponentPeaks = append(retCluster.ComponentPeaks, (pksSlice[idxAccumBiggest])[idxPeak])
 		}
 	}
 
