@@ -360,7 +360,7 @@ type Cluster struct {
 //Clusters is a slice of cluster
 type Clusters []Cluster
 
-//Compare compares i and j
+//Compare compares i and j monoisotopic-wise
 func (clusts Clusters) Compare(i int, j int) (result int) {
 	if clusts[i].Monoisotopic > clusts[j].Monoisotopic {
 		result = 1
