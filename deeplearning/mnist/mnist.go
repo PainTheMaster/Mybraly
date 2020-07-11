@@ -1,13 +1,13 @@
 package mnist
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"image/png"
 	"os"
 )
 
+//GetImage gets bitmap matrix of dataNum-th data in the given file and put it out as "ans" matrix.
 func GetImage(file *os.File, dataNum int) (ans [][]uint8) {
 	const (
 		headerOffset = 16 //bytes
@@ -24,7 +24,6 @@ func GetImage(file *os.File, dataNum int) (ans [][]uint8) {
 
 	buf := make([]uint8, cols*rows)
 	file.ReadAt(buf, int64(dataOffset))
-	fmt.Println("len of buf:", len(buf))
 	for i := 0; i <= rows-1; i++ {
 		for j := 0; j <= cols-1; j++ {
 			ans[i][j] = buf[cols*i+j]
@@ -34,6 +33,41 @@ func GetImage(file *os.File, dataNum int) (ans [][]uint8) {
 	return ans
 }
 
+//GetLabel gets dataNum-th label from a given file
+func GetLabel(file *os.File, dataNum int) (ans int) {
+	const (
+		headerOffset = 8
+		dataSize     = 1 //byte
+	)
+
+	dataOffset := headerOffset + dataNum
+	buf := make([]uint8, dataSize)
+	file.ReadAt(buf, int64(dataOffset))
+
+	ans = int(buf[0])
+
+	return
+}
+
+//GetItemNumber gets the number of items contained in the file
+func GetItemNumber(file *os.File) (ans int) {
+	const (
+		headerOffset = 4
+		dataSize     = 4 //bytes
+		byteToBits   = 8
+	)
+
+	buf := make([]uint8, dataSize)
+	file.ReadAt(buf, int64(headerOffset))
+
+	ans = 0
+	for i := range buf {
+		ans += int(buf[i]) << ((dataSize - i - 1) * byteToBits)
+	}
+	return
+}
+
+//ToImage makes image of a bitmap matrix "cell". The output is a png file
 func ToImage(cells [][]uint8, file *os.File) {
 
 	rows := len(cells)
@@ -69,5 +103,6 @@ func ToImage(cells [][]uint8, file *os.File) {
 	}
 
 	png.Encode(file, nrgba)
+	file.Close()
 
 }

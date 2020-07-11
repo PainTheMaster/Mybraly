@@ -1,4 +1,4 @@
-package activationfunc
+package deeplearning
 
 import (
 	"PainTheMaster/mybraly/service"
@@ -58,5 +58,11 @@ func SoftMax(x []float64) (ans []float64) {
 			ans[i] = math.Exp(x[i]) / sum
 		}
 	}
+	return
+}
+
+//SigmaOutput is an identity function for output.
+func SigmaOutput(in []float64) (out []float64) {
+	out = in
 	return
 }

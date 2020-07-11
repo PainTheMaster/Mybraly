@@ -1,5 +1,7 @@
 package matrix
 
+import "fmt"
+
 //MScale multiplies all elements of A a scale "scale"
 func MScale(scale float64, A [][]float64) (Ans [][]float64) {
 	rowsA := len(A)
@@ -67,5 +69,24 @@ func MMult(A, B [][]float64) (Ans [][]float64) {
 		}
 	}
 
+	return
+}
+
+//MatVecMult calculates the multipulication of a matrix "A" and a vertical vector "v".
+func MatVecMult(A [][]float64, v []float64) (ans []float64) {
+	rowsMat, colsMat := len(A), len(A[0])
+	dimVec := len(v)
+	if colsMat != dimVec {
+		fmt.Println("An error in MatVecMult():")
+		fmt.Println("The number of columns of the matrix and the vector dimension don't match")
+	}
+
+	ans = make([]float64, rowsMat)
+	for i := range A {
+		ans[i] = 0.0
+		for j := range A[i] {
+			ans[i] += A[i][j] * v[j]
+		}
+	}
 	return
 }
