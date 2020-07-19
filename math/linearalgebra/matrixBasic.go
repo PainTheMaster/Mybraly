@@ -2,6 +2,12 @@ package linearalgebra
 
 import "fmt"
 
+//Colvec is column vector
+type Colvec []float64
+
+//Rowvec is row vector
+type Rowvec []float64
+
 //MScale multiplies all elements of A a scale "scale"
 func MScale(scale float64, A [][]float64) (Ans [][]float64) {
 	rowsA := len(A)
@@ -72,20 +78,39 @@ func MMult(A, B [][]float64) (Ans [][]float64) {
 	return
 }
 
-//MatVecMult calculates the multipulication of a matrix "A" and a vertical vector "v".
-func MatVecMult(A [][]float64, v []float64) (ans []float64) {
+//MatColvecMult calculates the multipulication of a matrix "A" and a column vector "v".
+func MatColvecMult(A [][]float64, v Colvec) (ans Colvec) {
 	rowsMat, colsMat := len(A), len(A[0])
 	dimVec := len(v)
 	if colsMat != dimVec {
-		fmt.Println("An error in MatVecMult():")
+		fmt.Println("An error in MatColvecMult():")
 		fmt.Println("The number of columns of the matrix and the vector dimension don't match")
 	}
 
-	ans = make([]float64, rowsMat)
+	ans = make(Colvec, rowsMat)
 	for i := range A {
 		ans[i] = 0.0
 		for j := range A[i] {
 			ans[i] += A[i][j] * v[j]
+		}
+	}
+	return
+}
+
+//RowvecMatMult calculates the multiplcation of a row vector "v" and a matrix "A"
+func RowvecMatMult(v Rowvec, A [][]float64) (ans Rowvec) {
+	rowsMat, colsMat := len(A), len(A[0])
+	dimVec := len(v)
+	if rowsMat != dimVec {
+		fmt.Println("An error in RowvecMatMult():")
+		fmt.Println("The number of columns of the matrix and the vector dimension don't match")
+	}
+
+	ans = make(Rowvec, colsMat)
+	for j := range A[0] {
+		ans[j] = 0.0
+		for i := range A {
+			ans[j] += v[i] * A[i][j]
 		}
 	}
 	return

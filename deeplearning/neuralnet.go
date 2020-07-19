@@ -10,25 +10,25 @@ import (
 type NeuralNet struct {
 	W               [][][]float64
 	B               [][]float64
+	Midval          []linearalgebra.Colvec
+	Output          []linearalgebra.Colvec
 	ActivFuncHidden func(float64) float64
-	ActivFuncOut    func([]float64) []float64
+	ActivFuncOut    func(linearalgebra.Colvec) linearalgebra.Colvec
 }
 
-//Make makes a new empty nerral network "neuralNet"
-func Make(nodes []int, activFuncHidden func(float64) float64, activFuncOut func([]float64) []float64) (neuralNet NeuralNet) {
+//Make makes a new empty nerral network "neuralNet". "nodes" represents the number of nodes in each layer
+func Make(nodes []int, activFuncHidden func(float64) float64, activFuncOut func(linearalgebra.Colvec) linearalgebra.Colvec) (neuralNet NeuralNet) {
 	layers := len(nodes)
 
 	neuralNet.W = make([][][]float64, layers)
 	for i := 1; i <= layers-1; i++ {
 		neuralNet.W[i] = make([][]float64, nodes[i])
 		for j := range neuralNet.W[i] {
-			neuralNet.W[i][j] = make([]float64, nodes[i-1])
+			neuralNet.W[i][j] = make([]float64, nodes[i-1]+1)
 		}
-	}
-
-	neuralNet.B = make([][]float64, layers)
-	for i := 1; i <= layers-1; i++ {
-		neuralNet.B[i] = make([]float64, nodes[i])
+		neuralNet.Midval[i] = make(linearalgebra.Colvec, nodes[i])
+		neuralNet.Output[i] = make(linearalgebra.Colvec, nodes[i]+1)
+		neuralNet.Output[i][nodes[i]] = 1.0
 	}
 
 	neuralNet.ActivFuncHidden = activFuncHidden
@@ -38,27 +38,26 @@ func Make(nodes []int, activFuncHidden func(float64) float64, activFuncOut func(
 }
 
 //Forward calculates output of a neural "neuralNet" from the input "input".
-func (neuralNet NeuralNet) Forward(input []float64) (output []float64) {
-	if len(neuralNet.W[1][0]) != len(input) {
+func (neuralNet NeuralNet) Forward(input linearalgebra.Colvec) (output linearalgebra.Colvec) {
+	if len(neuralNet.W[1][0]) != len(input)+1 {
 		fmt.Println("deeplearing.Forward() error: input vector mismatch.")
 	}
 
-	mid := input
+	neuralNet.Output[0] = append(input, 1.0)
+
 	for layer := 1; layer <= len(neuralNet.W)-2; layer++ {
-		mid = linearalgebra.MatVecMult(neuralNet.W[layer], mid)
-		for i := range mid {
-			mid[i] += neuralNet.B[layer][i]
-			mid[i] = neuralNet.ActivFuncHidden(mid[i])
+		neuralNet.Midval[layer] = linearalgebra.MatColvecMult(neuralNet.W[layer], neuralNet.Output[layer-1])
+		for i := range neuralNet.Midval[layer] {
+			neuralNet.Output[layer][i] = neuralNet.ActivFuncHidden(neuralNet.Midval[layer][i])
 		}
 	}
 
 	{
 		layer := len(neuralNet.W) - 1
-		mid = linearalgebra.MatVecMult(neuralNet.W[layer], mid)
-		for i := range mid {
-			mid[i] += neuralNet.B[layer][i]
-		}
+		neuralNet.Midval[layer] = linearalgebra.MatColvecMult(neuralNet.W[layer], neuralNet.Output[layer-1])
+		neuralNet.Output[layer] = neuralNet.ActivFuncOut(neuralNet.Midval[layer])
+		output = neuralNet.Output[layer]
 	}
-	output = neuralNet.ActivFuncOut(mid)
+
 	return
 }

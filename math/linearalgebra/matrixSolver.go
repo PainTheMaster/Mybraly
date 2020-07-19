@@ -5,12 +5,12 @@ package linearalgebra
 /*QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR*/
 
 //QrSolver gives solution to a equation QtRx=y
-//A matrix has to be decomposed into a "Householder""Qt"
-func QrSolver(Qt [][]float64, R [][]float64, y []float64) (x []float64) {
+//A matrix has to have been decomposed into a "Householder vectors" Qt and a upper triangular matrix R by using func Qr()
+func QrSolver(Qt [][]float64, R [][]float64, y Colvec) (x Colvec) {
 
 	size := len(R)
 
-	yTemp := make([]float64, size)
+	yTemp := make(Colvec, size)
 	for i := 0; i <= size-1; i++ {
 		yTemp[i] = y[i]
 	}
@@ -26,7 +26,7 @@ func QrSolver(Qt [][]float64, R [][]float64, y []float64) (x []float64) {
 		}
 	}
 
-	x = make([]float64, size)
+	x = make(Colvec, size)
 
 	for rowSolv := size - 1; rowSolv >= 0; rowSolv-- {
 		var sum float64
@@ -45,9 +45,9 @@ func QrSolver(Qt [][]float64, R [][]float64, y []float64) (x []float64) {
 /*LU LU LU LU LU LU LU LU LU LU LU LU LU LU LU LU LU LU LU LU*/
 
 //LuSolver solves a equasion Ax=y by using LU decomposition
-func LuSolver(A [][]float64, y []float64) (x []float64) {
+func LuSolver(A [][]float64, y Colvec) (x Colvec) {
 	size := len(A)
-	x = make([]float64, size)
+	x = make(Colvec, size)
 	interm := make([]float64, size)
 
 	LU := Lu(A)

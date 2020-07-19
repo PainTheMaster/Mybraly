@@ -42,7 +42,7 @@ func Householder(A [][]float64, col int, row int) (h []float64, topVal float64) 
 	return
 }
 
-//Qr performs QR decomposition of A and returns corresponding Householder "vectors" and a matrix R
+//Qr performs QR decomposition of A and returns corresponding Householder "vectors" Qt and a matrix R
 func Qr(A [][]float64) (Qt [][]float64, R [][]float64) {
 
 	size := len(A)
