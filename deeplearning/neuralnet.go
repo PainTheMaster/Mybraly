@@ -1,7 +1,7 @@
 package deeplearning
 
 import (
-	"PainTheMaster/mybraly/math/matrix"
+	"PainTheMaster/mybraly/math/linearalgebra"
 	"fmt"
 )
 
@@ -45,7 +45,7 @@ func (neuralNet NeuralNet) Forward(input []float64) (output []float64) {
 
 	mid := input
 	for layer := 1; layer <= len(neuralNet.W)-2; layer++ {
-		mid = matrix.MatVecMult(neuralNet.W[layer], mid)
+		mid = linearalgebra.MatVecMult(neuralNet.W[layer], mid)
 		for i := range mid {
 			mid[i] += neuralNet.B[layer][i]
 			mid[i] = neuralNet.ActivFuncHidden(mid[i])
@@ -54,7 +54,7 @@ func (neuralNet NeuralNet) Forward(input []float64) (output []float64) {
 
 	{
 		layer := len(neuralNet.W) - 1
-		mid = matrix.MatVecMult(neuralNet.W[layer], mid)
+		mid = linearalgebra.MatVecMult(neuralNet.W[layer], mid)
 		for i := range mid {
 			mid[i] += neuralNet.B[layer][i]
 		}

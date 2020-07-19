@@ -1,4 +1,4 @@
-package matrix
+package linearalgebra
 
 /*QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR QR*/
 /*              QR related functions from here               */
