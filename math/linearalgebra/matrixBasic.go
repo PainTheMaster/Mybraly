@@ -87,7 +87,7 @@ func MatColvecMult(A [][]float64, v Colvec) (ans Colvec) {
 		fmt.Println("The number of columns of the matrix and the vector dimension don't match")
 	}
 
-	ans = make(Colvec, rowsMat, rowsMat+1)
+	ans = make(Colvec, rowsMat)
 	for i := range A {
 		ans[i] = 0.0
 		for j := range A[i] {
