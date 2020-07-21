@@ -1,17 +1,77 @@
 package deeplearning
 
 import (
+	"PainTheMaster/mybraly/math/linearalgebra"
 	"PainTheMaster/mybraly/service"
 	"math"
 )
 
-//Sigmoid returns 1/(1+Exp(-x))
-func Sigmoid(x float64) (ans float64) {
-	ans = 1.0 / (1.0 + math.Exp(-1.0*x))
-	return
+//ActFuncHiddenSet is a set of activation function. Forward is a activation function and Backward is the derivative of the activation function.
+type ActFuncHiddenSet struct {
+	Forward  func(x float64) float64
+	Backward func(x float64, y float64) float64
 }
 
-//Step returns 1 if x >= 0, 0 if x < 0
+//ActFuncOutputSet isa s set of activation function. Forward is a activation function and Backward is the derivative of the activation function.
+type ActFuncOutputSet struct {
+	Forward  func(x linearalgebra.Colvec) linearalgebra.Colvec
+	Backward func(x linearalgebra.Colvec, y linearalgebra.Colvec) linearalgebra.Colvec
+}
+
+//Sigmoid is a set of sigmoid function and its derivative
+var Sigmoid ActFuncHiddenSet
+
+//ReLU is a set of ReLU and its derivative
+var ReLU ActFuncHiddenSet
+
+//Identity is a set of itendtity function and its derivative
+var Identity ActFuncHiddenSet
+
+//InitActFunc makes the active function structures
+func InitActFunc() {
+	Sigmoid = ActFuncHiddenSet{
+		Forward: func(x float64) (ans float64) {
+			ans = 1.0 / (1.0 + math.Exp(-1.0*x))
+			return
+		},
+		Backward: func(x float64, y float64) (ans float64) {
+			ans = math.Exp(-1.0*x) * y * y
+			return
+		},
+	}
+
+	ReLU = ActFuncHiddenSet{
+		Forward: func(x float64) (ans float64) {
+			if x >= 0.0 {
+				ans = x
+			} else {
+				ans = 0.0
+			}
+			return
+		},
+		Backward: func(x float64, y float64) (ans float64) {
+			if x >= 0.0 {
+				ans = 1.0
+			} else {
+				ans = 0.0
+			}
+			return
+		},
+	}
+
+	Identity = ActFuncHiddenSet{
+		Forward: func(x float64) (ans float64) {
+			ans = x
+			return
+		},
+		Backward: func(x float64, y float64) (ans float64) {
+			ans = 1
+			return
+		},
+	}
+}
+
+/*
 func Step(x float64) (ans float64) {
 	if x >= 0.0 {
 		ans = 1.0
@@ -20,16 +80,7 @@ func Step(x float64) (ans float64) {
 	}
 	return
 }
-
-//ReLU is Reflected linear unit: this returns x if x >= 0, 0 if x < 0.
-func ReLU(x float64) (ans float64) {
-	if x >= 0.0 {
-		ans = x
-	} else {
-		ans = 0.0
-	}
-	return
-}
+*/
 
 //SoftMax is the soft max function: exp(x_n)/sum(exp(x_i))
 func SoftMax(x []float64) (ans []float64) {
@@ -61,8 +112,8 @@ func SoftMax(x []float64) (ans []float64) {
 	return
 }
 
-//SigmaOutput is an identity function for output.
+/*SigmaOutput is an identity function for output.
 func SigmaOutput(in []float64) (out []float64) {
 	out = in
 	return
-}
+}*/

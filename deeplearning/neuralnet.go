@@ -8,30 +8,30 @@ import (
 //NeuralNet is a neural network composed of a weight matrix "W", bias vector "B",
 //activation function for hdden layers "ActivFuncHidden", activation function for out-put layer "ActivFuncOut".
 type NeuralNet struct {
-	W               [][][]float64
-	B               [][]float64
-	Midval          []linearalgebra.Colvec
-	Output          []linearalgebra.Colvec
-	ActivFuncHidden func(float64) float64
-	ActivFuncOut    func(linearalgebra.Colvec) linearalgebra.Colvec
+	W [][][]float64
+
+	Midval        []linearalgebra.Colvec
+	Output        []linearalgebra.Colvec
+	ActFuncHidden []ActFuncHiddenSet
+	ActivFuncOut  ActFuncOutputSet
 }
 
 //Make makes a new empty nerral network "neuralNet". "nodes" represents the number of nodes in each layer
-func Make(nodes []int, activFuncHidden func(float64) float64, activFuncOut func(linearalgebra.Colvec) linearalgebra.Colvec) (neuralNet NeuralNet) {
+func Make(nodes []int, activFuncHidden []ActFuncHiddenSet, activFuncOut ActFuncOutputSet) (neuralNet NeuralNet) {
 	layers := len(nodes)
 
 	neuralNet.W = make([][][]float64, layers)
 	for i := 1; i <= layers-1; i++ {
 		neuralNet.W[i] = make([][]float64, nodes[i])
 		for j := range neuralNet.W[i] {
-			neuralNet.W[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.W[i][j] = make([]float64, nodes[i-1]+1) //The last (nodes[i-1]-th) column is bias
 		}
 		neuralNet.Midval[i] = make(linearalgebra.Colvec, nodes[i])
 		neuralNet.Output[i] = make(linearalgebra.Colvec, nodes[i]+1)
 		neuralNet.Output[i][nodes[i]] = 1.0
 	}
 
-	neuralNet.ActivFuncHidden = activFuncHidden
+	neuralNet.ActFuncHidden = activFuncHidden
 	neuralNet.ActivFuncOut = activFuncOut
 
 	return
@@ -48,14 +48,15 @@ func (neuralNet NeuralNet) Forward(input linearalgebra.Colvec) (output linearalg
 	for layer := 1; layer <= len(neuralNet.W)-2; layer++ {
 		neuralNet.Midval[layer] = linearalgebra.MatColvecMult(neuralNet.W[layer], neuralNet.Output[layer-1])
 		for i := range neuralNet.Midval[layer] {
-			neuralNet.Output[layer][i] = neuralNet.ActivFuncHidden(neuralNet.Midval[layer][i])
+			neuralNet.Output[layer][i] = neuralNet.ActFuncHidden[layer].Forward(neuralNet.Midval[layer][i])
 		}
+		neuralNet.Output[layer] = append(neuralNet.Output[layer], 1.0)
 	}
 
 	{
 		layer := len(neuralNet.W) - 1
 		neuralNet.Midval[layer] = linearalgebra.MatColvecMult(neuralNet.W[layer], neuralNet.Output[layer-1])
-		neuralNet.Output[layer] = neuralNet.ActivFuncOut(neuralNet.Midval[layer])
+		neuralNet.Output[layer] = neuralNet.ActivFuncOut.Forward(neuralNet.Midval[layer])
 		output = neuralNet.Output[layer]
 	}
 
