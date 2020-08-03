@@ -29,6 +29,7 @@ var ReLU ActFuncHiddenSet
 //Identity is a set of itendtity function and its derivative
 var Identity ActFuncHiddenSet
 
+//SoftMax is a softmax activation function and its derivative.
 var SoftMax ActFuncOutputSet
 
 //InitActFunc makes the active function structures

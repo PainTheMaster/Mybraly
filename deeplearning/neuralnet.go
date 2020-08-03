@@ -4,6 +4,7 @@ import (
 	"PainTheMaster/mybraly/math/linearalgebra"
 	"fmt"
 	"math"
+	"math/rand"
 )
 
 //NeuralNet is a neural network composed of a weight matrix "W", bias vector "B",
@@ -41,7 +42,29 @@ func Make(nodes []int, activFuncHidden []ActFuncHiddenSet, activFuncOut ActFuncO
 	neuralNet.ActivFuncOut = activFuncOut
 
 	//TODO: please implement initialization of W by using appropriate distribution.
-
+	var seed int64 = 100
+	randSource := rand.NewSource(seed)
+	newRand := rand.New(randSource)
+	randBias := 0.01
+	for l := 1; l <= layers-2; l++ {
+		for node := range neuralNet.W[l] {
+			numBranch := len(neuralNet.W[l-1])
+			randStdev := activFuncHidden[l].StdevWtFunc(numBranch)
+			for br := range neuralNet.W[l][node] {
+				neuralNet.W[l][node][br] = newRand.NormFloat64()*randStdev + randBias
+			}
+		}
+	}
+	{
+		l := layers - 1
+		for node := range neuralNet.W[l] {
+			numBranch := len(neuralNet.W[l-1])
+			randStdev := activFuncOut.StdevWtFunc(numBranch)
+			for br := range neuralNet.W[l][node] {
+				neuralNet.W[l][node][br] = newRand.NormFloat64()*randStdev + randBias
+			}
+		}
+	}
 	return
 }
 
@@ -80,6 +103,7 @@ func (neuralNet NeuralNet) Error(input linearalgebra.Colvec, correct linearalgeb
 	return
 }
 
+//Optimize optimizes the neural network to fit the given dataset.
 func (neuralNet *NeuralNet) Optimize(input []linearalgebra.Colvec, correct []linearalgebra.Colvec, ita float64) (err float64) {
 	numData := len(input)
 
