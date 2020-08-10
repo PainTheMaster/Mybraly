@@ -33,14 +33,15 @@ var Identity ActFuncHiddenSet
 var SoftMax ActFuncOutputSet
 
 //InitActFunc makes the active function structures
-func InitActFunc() {
+func InitActFunc() (actfuncHidden map[string]ActFuncHiddenSet, actfuncOut map[string]ActFuncOutputSet) {
+	actfuncHidden = make(map[string]ActFuncHiddenSet)
+	actfuncOut = make(map[string]ActFuncOutputSet)
 	Sigmoid = ActFuncHiddenSet{
 		Forward: func(x linearalgebra.Colvec) (ans linearalgebra.Colvec) {
-			ans = make(linearalgebra.Colvec, len(x)+1)
+			ans = make(linearalgebra.Colvec, len(x), len(x)+1)
 			for i := range x {
 				ans[i] = 1.0 / (1.0 + math.Exp(-1.0*x[i]))
 			}
-			ans[len(x)] = 1.0
 			return
 		},
 		Backward: func(x linearalgebra.Colvec, y linearalgebra.Colvec) (ans linearalgebra.Colvec) {
@@ -55,10 +56,11 @@ func InitActFunc() {
 			return
 		},
 	}
+	actfuncHidden["Sigmoid"] = Sigmoid
 
 	ReLU = ActFuncHiddenSet{
 		Forward: func(x linearalgebra.Colvec) (ans linearalgebra.Colvec) {
-			ans = make(linearalgebra.Colvec, len(x)+1)
+			ans = make(linearalgebra.Colvec, len(x), len(x)+1)
 			for i := range x {
 				if x[i] >= 0.0 {
 					ans[i] = x[i]
@@ -66,7 +68,6 @@ func InitActFunc() {
 					ans[i] = 0.0
 				}
 			}
-			ans[len(x)] = 1.0
 			return
 		},
 		Backward: func(x linearalgebra.Colvec, y linearalgebra.Colvec) (ans linearalgebra.Colvec) {
@@ -85,10 +86,11 @@ func InitActFunc() {
 			return
 		},
 	}
+	actfuncHidden["ReLU"] = ReLU
 
 	Identity = ActFuncHiddenSet{
 		Forward: func(x linearalgebra.Colvec) (ans linearalgebra.Colvec) {
-			ans = make(linearalgebra.Colvec, len(x)+1)
+			ans = make(linearalgebra.Colvec, len(x), len(x)+1)
 			for i := range x {
 				ans[i] = x[i]
 			}
@@ -106,6 +108,7 @@ func InitActFunc() {
 			return
 		},
 	}
+	actfuncHidden["Identity"] = Identity
 
 	SoftMax = ActFuncOutputSet{
 		Forward: func(x linearalgebra.Colvec) (ans linearalgebra.Colvec) {
@@ -141,6 +144,9 @@ func InitActFunc() {
 			return
 		},
 	}
+	actfuncOut["SoftMax"] = SoftMax
+
+	return
 }
 
 //SoftMax is the soft max function: exp(x_n)/sum(exp(x_i))

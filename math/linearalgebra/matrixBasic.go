@@ -85,6 +85,7 @@ func MatColvecMult(A [][]float64, v Colvec) (ans Colvec) {
 	if colsMat != dimVec {
 		fmt.Println("An error in MatColvecMult():")
 		fmt.Println("The number of columns of the matrix and the vector dimension don't match")
+		fmt.Printf("Cols of matrix: %d\nRows of vector: %d\n", colsMat, dimVec)
 	}
 
 	ans = make(Colvec, rowsMat)

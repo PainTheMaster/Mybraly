@@ -30,6 +30,8 @@ func Make(nodes []int, activFuncHidden []ActFuncHiddenSet, activFuncOut ActFuncO
 
 	neuralNet.W = make([][][]float64, layers)
 	neuralNet.dW = make([][][]float64, layers)
+	neuralNet.Midval = make([]linearalgebra.Colvec, layers)
+	neuralNet.Output = make([]linearalgebra.Colvec, layers)
 	neuralNet.ParamMomentum.moment = make([][][]float64, layers)
 
 	for i := 1; i <= layers-1; i++ {
@@ -62,7 +64,7 @@ func Make(nodes []int, activFuncHidden []ActFuncHiddenSet, activFuncOut ActFuncO
 	randBias := 0.01
 	for l := 1; l <= layers-2; l++ {
 		for node := range neuralNet.W[l] {
-			numBranch := len(neuralNet.W[l-1])
+			numBranch := len(neuralNet.W[l][0])
 			randStdev := activFuncHidden[l].StdevWtFunc(numBranch)
 			for br := range neuralNet.W[l][node] {
 				neuralNet.W[l][node][br] = newRand.NormFloat64()*randStdev + randBias
@@ -72,7 +74,7 @@ func Make(nodes []int, activFuncHidden []ActFuncHiddenSet, activFuncOut ActFuncO
 	{
 		l := layers - 1
 		for node := range neuralNet.W[l] {
-			numBranch := len(neuralNet.W[l-1])
+			numBranch := len(neuralNet.W[l][0])
 			randStdev := activFuncOut.StdevWtFunc(numBranch)
 			for br := range neuralNet.W[l][node] {
 				neuralNet.W[l][node][br] = newRand.NormFloat64()*randStdev + randBias
