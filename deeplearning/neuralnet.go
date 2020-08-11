@@ -16,6 +16,12 @@ type NeuralNet struct {
 	Delta         []linearalgebra.Colvec
 	ActFuncHidden []ActFuncHiddenSet
 	ActivFuncOut  ActFuncOutputSet
+
+	dW [][][]float64
+
+	ParamMomentum struct {
+		moment [][][]float64
+	}
 }
 
 //Make makes a new empty nerral network "neuralNet". "nodes" represents the number of nodes in each layer
@@ -23,11 +29,19 @@ func Make(nodes []int, activFuncHidden []ActFuncHiddenSet, activFuncOut ActFuncO
 	layers := len(nodes)
 
 	neuralNet.W = make([][][]float64, layers)
+	neuralNet.dW = make([][][]float64, layers)
+	neuralNet.ParamMomentum.moment = make([][][]float64, layers)
+
 	for i := 1; i <= layers-1; i++ {
 		neuralNet.W[i] = make([][]float64, nodes[i])
+		neuralNet.dW[i] = make([][]float64, nodes[i])
+		neuralNet.ParamMomentum.moment[i] = make([][]float64, nodes[i])
 		for j := range neuralNet.W[i] {
 			neuralNet.W[i][j] = make([]float64, nodes[i-1]+1) //The last (nodes[i-1]-th) column is bias
+			neuralNet.dW[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamMomentum.moment[i][j] = make([]float64, nodes[i-1]+1)
 		}
+
 		neuralNet.Midval[i] = make(linearalgebra.Colvec, nodes[i])
 		neuralNet.Output[i] = make(linearalgebra.Colvec, nodes[i]+1)
 		neuralNet.Output[i][nodes[i]] = 1.0
@@ -103,8 +117,8 @@ func (neuralNet NeuralNet) Error(input linearalgebra.Colvec, correct linearalgeb
 	return
 }
 
-//Optimize optimizes the neural network to fit the given dataset.
-func (neuralNet *NeuralNet) Optimize(input []linearalgebra.Colvec, correct []linearalgebra.Colvec, ita float64) (err float64) {
+//GradDecent optimizes the neural network to fit the given dataset.
+func (neuralNet *NeuralNet) GradDecent(input, correct []linearalgebra.Colvec, learnRate float64) (err float64) {
 	numData := len(input)
 
 	diffW := make([][][]float64, len(neuralNet.W))
@@ -124,15 +138,15 @@ func (neuralNet *NeuralNet) Optimize(input []linearalgebra.Colvec, correct []lin
 		}
 		for layer--; layer >= 1; layer-- {
 			actFuncDiff := neuralNet.ActFuncHidden[layer].Backward(neuralNet.Midval[layer], neuralNet.Output[layer])
-			for j := range neuralNet.Output[layer] {
+			for j := range neuralNet.Delta[layer] {
 				neuralNet.Delta[layer][j] = 0.0
 				for k := range neuralNet.Delta[layer+1] {
-					neuralNet.Delta[layer][j] += neuralNet.Delta[layer+1][k] * neuralNet.W[layer+1][k][j] * actFuncDiff[layer]
+					neuralNet.Delta[layer][j] += neuralNet.Delta[layer+1][k] * neuralNet.W[layer+1][k][j] * actFuncDiff[j]
 				}
 			}
 		}
 
-		for layer = range neuralNet.W {
+		for layer = 1; layer <= len(neuralNet.W)-1; layer++ {
 			for j := range neuralNet.W[layer] {
 				for i := range neuralNet.W[layer][j] {
 					diffW[layer][j][i] += neuralNet.Delta[layer][j] * neuralNet.Output[layer-1][i]
@@ -141,10 +155,10 @@ func (neuralNet *NeuralNet) Optimize(input []linearalgebra.Colvec, correct []lin
 		}
 	}
 
-	for layer := range neuralNet.W {
+	for layer := 1; layer <= len(neuralNet.W)-1; layer++ {
 		for j := range neuralNet.W[layer] {
 			for i := range neuralNet.W[layer][j] {
-				neuralNet.W[layer][j][i] -= diffW[layer][j][i] / float64(numData) * ita
+				neuralNet.W[layer][j][i] -= diffW[layer][j][i] / float64(numData) * learnRate
 			}
 		}
 	}
@@ -153,5 +167,62 @@ func (neuralNet *NeuralNet) Optimize(input []linearalgebra.Colvec, correct []lin
 	for data := range input {
 		err += neuralNet.Error(input[data], correct[data])
 	}
+	err /= float64(numData)
+	return
+}
+
+//Momentum performs single run of momentum based optimization by using a (mini-) batch.
+func (neuralNet *NeuralNet) Momentum(input, correct []linearalgebra.Colvec, learnRate, momentRate float64) (err float64) {
+	numData := len(input)
+
+	diffW := make([][][]float64, len(neuralNet.W))
+	for layer := range diffW {
+		diffW[layer] = make([][]float64, len(neuralNet.W[layer]))
+		for j := range diffW[layer] {
+			diffW[layer][j] = make([]float64, len(neuralNet.W[layer][j]))
+		}
+	}
+
+	for data := 0; data <= numData-1; data++ {
+		neuralNet.Forward(input[data])
+
+		layer := len(neuralNet.W) - 1
+		for j := range neuralNet.Output[layer] {
+			neuralNet.Delta[layer][j] = neuralNet.Output[layer][j] - correct[data][j]
+		}
+		for layer--; layer >= 1; layer-- {
+			actFuncDiff := neuralNet.ActFuncHidden[layer].Backward(neuralNet.Midval[layer], neuralNet.Output[layer])
+			for j := range neuralNet.Delta[layer] {
+				neuralNet.Delta[layer][j] = 0.0
+				for k := range neuralNet.Delta[layer+1] {
+					neuralNet.Delta[layer][j] += neuralNet.Delta[layer+1][k] * neuralNet.W[layer+1][k][j] * actFuncDiff[j]
+				}
+			}
+		}
+
+		for layer = 1; layer <= len(neuralNet.W)-1; layer++ {
+			for j := range neuralNet.W[layer] {
+				for i := range neuralNet.W[layer][j] {
+					diffW[layer][j][i] += neuralNet.Delta[layer][j] * neuralNet.Output[layer-1][i]
+				}
+			}
+		}
+	}
+
+	for layer := 1; layer <= len(neuralNet.W)-1; layer++ {
+		for j := range neuralNet.W[layer] {
+			for i := range neuralNet.W[layer][j] {
+				neuralNet.dW[layer][j][i] = momentRate*neuralNet.ParamMomentum.moment[layer][j][i] - (1.0-momentRate)*learnRate*diffW[layer][j][i]/float64(numData)
+				neuralNet.W[layer][j][i] += neuralNet.dW[layer][j][i]
+				neuralNet.ParamMomentum.moment[layer][j][i] = neuralNet.dW[layer][j][i]
+			}
+		}
+	}
+
+	err = 0.0
+	for data := range input {
+		err += neuralNet.Error(input[data], correct[data])
+	}
+	err /= float64(numData)
 	return
 }
