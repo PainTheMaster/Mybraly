@@ -23,6 +23,11 @@ type NeuralNet struct {
 	ParamMomentum struct {
 		moment [][][]float64
 	}
+
+	ParamAdaGrad struct {
+		rep   int
+		SqSum [][][]float64
+	}
 }
 
 //Make makes a new empty nerral network "neuralNet". "nodes" represents the number of nodes in each layer
@@ -35,17 +40,20 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	neuralNet.Midval = make([]linearalgebra.Colvec, layers)
 	neuralNet.Output = make([]linearalgebra.Colvec, layers)
 	neuralNet.ParamMomentum.moment = make([][][]float64, layers)
+	neuralNet.ParamAdaGrad.SqSum = make([][][]float64, layers)
 
 	for i := 1; i <= layers-1; i++ {
 		neuralNet.W[i] = make([][]float64, nodes[i])
 		neuralNet.dW[i] = make([][]float64, nodes[i])
 		neuralNet.diffW[i] = make([][]float64, nodes[i])
 		neuralNet.ParamMomentum.moment[i] = make([][]float64, nodes[i])
+		neuralNet.ParamAdaGrad.SqSum[i] = make([][]float64, nodes[i])
 		for j := range neuralNet.W[i] {
 			neuralNet.W[i][j] = make([]float64, nodes[i-1]+1) //The last (nodes[i-1]-th) column is bias
 			neuralNet.dW[i][j] = make([]float64, nodes[i-1]+1)
 			neuralNet.diffW[i][j] = make([]float64, nodes[i-1]+1)
 			neuralNet.ParamMomentum.moment[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamAdaGrad.SqSum[i][j] = make([]float64, nodes[i-1]+1)
 		}
 
 		neuralNet.Midval[i] = make(linearalgebra.Colvec, nodes[i])
@@ -106,6 +114,9 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 			}
 		}
 	}
+
+	neuralNet.ParamAdaGrad.rep = 0
+
 	return
 }
 
@@ -204,6 +215,43 @@ func (neuralNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec, l
 				neuralNet.W[layer][j][i] -= neuralNet.diffW[layer][j][i] * learnRate
 			}
 		}
+	}
+
+	err = 0.0
+	for data := range input {
+		err += neuralNet.Error(input[data], correct[data])
+	}
+	err /= float64(numData)
+	return
+}
+
+//AdaGrad performs AdaGrad optimization.
+func (neuralNet *NeuralNet) AdaGrad(input, correct []linearalgebra.Colvec, learnRate float64) (err float64) {
+	numData := len(input)
+
+	if neuralNet.ParamAdaGrad.rep == 0 {
+		smallNum := 1.0e-8
+		neuralNet.GradDescent(input, correct, learnRate)
+		for layer := 1; layer <= len(neuralNet.ParamAdaGrad.SqSum)-1; layer++ {
+			for j := 0; j <= len(neuralNet.ParamAdaGrad.SqSum[layer])-1; j++ {
+				for i := 0; i <= len(neuralNet.ParamAdaGrad.SqSum[layer][j])-1; i++ {
+					neuralNet.ParamAdaGrad.SqSum[layer][j][i] = neuralNet.diffW[layer][j][i]*neuralNet.diffW[layer][j][i] + smallNum
+				}
+			}
+		}
+		neuralNet.ParamAdaGrad.rep++
+	} else {
+		neuralNet.Differentiate(input, correct)
+		for layer := 1; layer <= len(neuralNet.ParamAdaGrad.SqSum)-1; layer++ {
+			for j := 0; j <= len(neuralNet.ParamAdaGrad.SqSum[layer])-1; j++ {
+				for i := 0; i <= len(neuralNet.ParamAdaGrad.SqSum[layer][j])-1; i++ {
+					neuralNet.ParamAdaGrad.SqSum[layer][j][i] += neuralNet.diffW[layer][j][i] * neuralNet.diffW[layer][j][i]
+					neuralNet.dW[layer][j][i] = -1.0 * learnRate * neuralNet.diffW[layer][j][i] / math.Sqrt(neuralNet.ParamAdaGrad.SqSum[layer][j][i])
+					neuralNet.W[layer][j][i] += neuralNet.dW[layer][j][i]
+				}
+			}
+		}
+		neuralNet.ParamAdaGrad.rep++
 	}
 
 	err = 0.0
