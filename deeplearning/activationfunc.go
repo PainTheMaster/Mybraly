@@ -23,14 +23,26 @@ type ActFuncOutputSet struct {
 //Sigmoid is a set of sigmoid function and its derivative
 var Sigmoid ActFuncHiddenSet
 
+//LabelSigmoid is a label for Sigmoid
+const LabelSigmoid = "Sigmoid"
+
 //ReLU is a set of ReLU and its derivative
 var ReLU ActFuncHiddenSet
+
+//LabelReLU is a label for ReLU
+const LabelReLU = "ReLU"
 
 //Identity is a set of itendtity function and its derivative
 var Identity ActFuncHiddenSet
 
+//LabelIdentity is a label for Identity unit
+const LabelIdentity = "Identity"
+
 //SoftMax is a softmax activation function and its derivative.
 var SoftMax ActFuncOutputSet
+
+//LabelSoftMax is a label for Soft max
+const LabelSoftMax = "SoftMax"
 
 //InitActFunc makes the active function structures
 func InitActFunc() (actfuncHidden map[string]ActFuncHiddenSet, actfuncOut map[string]ActFuncOutputSet) {
@@ -56,7 +68,7 @@ func InitActFunc() (actfuncHidden map[string]ActFuncHiddenSet, actfuncOut map[st
 			return
 		},
 	}
-	actfuncHidden["Sigmoid"] = Sigmoid
+	actfuncHidden[LabelSigmoid] = Sigmoid
 
 	ReLU = ActFuncHiddenSet{
 		Forward: func(x linearalgebra.Colvec) (ans linearalgebra.Colvec) {
@@ -86,7 +98,7 @@ func InitActFunc() (actfuncHidden map[string]ActFuncHiddenSet, actfuncOut map[st
 			return
 		},
 	}
-	actfuncHidden["ReLU"] = ReLU
+	actfuncHidden[LabelReLU] = ReLU
 
 	Identity = ActFuncHiddenSet{
 		Forward: func(x linearalgebra.Colvec) (ans linearalgebra.Colvec) {
@@ -108,7 +120,7 @@ func InitActFunc() (actfuncHidden map[string]ActFuncHiddenSet, actfuncOut map[st
 			return
 		},
 	}
-	actfuncHidden["Identity"] = Identity
+	actfuncHidden[LabelIdentity] = Identity
 
 	SoftMax = ActFuncOutputSet{
 		Forward: func(x linearalgebra.Colvec) (ans linearalgebra.Colvec) {
@@ -144,45 +156,7 @@ func InitActFunc() (actfuncHidden map[string]ActFuncHiddenSet, actfuncOut map[st
 			return
 		},
 	}
-	actfuncOut["SoftMax"] = SoftMax
+	actfuncOut[LabelSoftMax] = SoftMax
 
 	return
 }
-
-//SoftMax is the soft max function: exp(x_n)/sum(exp(x_i))
-/*
-func SoftMax(x []float64) (ans []float64) {
-	length := len(x)
-	ans = make([]float64, length)
-
-	maxVal, _ := service.MaxFloat64(x)
-
-	if math.Log(float64(length))+maxVal > math.Log(math.MaxFloat64) {
-		p := math.Log(float64(length)) + maxVal - math.Log(math.MaxFloat64) + 0.1 //1.0 is just for redundancy
-		var sum float64
-		sum = 0.0
-		for i := range x {
-			sum += math.Exp(x[i] - p)
-		}
-		for i := range x {
-			ans[i] = math.Exp(x[i]-p) / sum
-		}
-	} else {
-		var sum float64
-		sum = 0.0
-		for i := range x {
-			sum += math.Exp(x[i])
-		}
-		for i := range x {
-			ans[i] = math.Exp(x[i]) / sum
-		}
-	}
-	return
-}
-*/
-
-/*SigmaOutput is an identity function for output.
-func SigmaOutput(in []float64) (out []float64) {
-	out = in
-	return
-}*/

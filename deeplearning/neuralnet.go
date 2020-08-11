@@ -25,7 +25,7 @@ type NeuralNet struct {
 }
 
 //Make makes a new empty nerral network "neuralNet". "nodes" represents the number of nodes in each layer
-func Make(nodes []int, activFuncHidden []ActFuncHiddenSet, activFuncOut ActFuncOutputSet) (neuralNet NeuralNet) {
+func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralNet NeuralNet) {
 	layers := len(nodes)
 
 	neuralNet.W = make([][][]float64, layers)
@@ -54,20 +54,32 @@ func Make(nodes []int, activFuncHidden []ActFuncHiddenSet, activFuncOut ActFuncO
 		neuralNet.Delta[i] = make(linearalgebra.Colvec, nodes[i])
 	}
 
-	neuralNet.ActFuncHidden = activFuncHidden
-	neuralNet.ActivFuncOut = activFuncOut
+	actFuncHidden, actFuncOut := InitActFunc()
+	for i := range strActFuncHidden {
+		neuralNet.ActFuncHidden = append(neuralNet.ActFuncHidden, actFuncHidden[strActFuncHidden[i]])
+	}
+	neuralNet.ActivFuncOut = actFuncOut[strActFuncOut]
 
 	//TODO: please implement initialization of W by using appropriate distribution.
 	var seed int64 = 100
 	randSource := rand.NewSource(seed)
 	newRand := rand.New(randSource)
-	randBias := 0.01
+	randAve := 0.01
 	for l := 1; l <= layers-2; l++ {
 		for node := range neuralNet.W[l] {
 			numBranch := len(neuralNet.W[l][0])
-			randStdev := activFuncHidden[l].StdevWtFunc(numBranch)
+			randStdev := neuralNet.ActFuncHidden[l].StdevWtFunc(numBranch)
 			for br := range neuralNet.W[l][node] {
-				neuralNet.W[l][node][br] = newRand.NormFloat64()*randStdev + randBias
+				neuralNet.W[l][node][br] = newRand.NormFloat64()*randStdev + randAve
+			}
+			if neuralNet.W[l][node][numBranch-1] < 0 {
+				var idxMax int = numBranch - 2
+				for i := numBranch - 2; i >= 0; i-- {
+					if neuralNet.W[l][node][i] > neuralNet.W[l][node][idxMax] {
+						idxMax = i
+					}
+				}
+				neuralNet.W[l][node][numBranch-1], neuralNet.W[l][node][idxMax] = neuralNet.W[l][node][idxMax], neuralNet.W[l][node][numBranch-1]
 			}
 		}
 	}
@@ -75,9 +87,18 @@ func Make(nodes []int, activFuncHidden []ActFuncHiddenSet, activFuncOut ActFuncO
 		l := layers - 1
 		for node := range neuralNet.W[l] {
 			numBranch := len(neuralNet.W[l][0])
-			randStdev := activFuncOut.StdevWtFunc(numBranch)
+			randStdev := neuralNet.ActivFuncOut.StdevWtFunc(numBranch)
 			for br := range neuralNet.W[l][node] {
-				neuralNet.W[l][node][br] = newRand.NormFloat64()*randStdev + randBias
+				neuralNet.W[l][node][br] = newRand.NormFloat64()*randStdev + randAve
+			}
+			if neuralNet.W[l][node][numBranch-1] < 0 {
+				var idxMax int = numBranch - 2
+				for i := numBranch - 2; i >= 0; i-- {
+					if neuralNet.W[l][node][i] > neuralNet.W[l][node][idxMax] {
+						idxMax = i
+					}
+				}
+				neuralNet.W[l][node][numBranch-1], neuralNet.W[l][node][idxMax] = neuralNet.W[l][node][idxMax], neuralNet.W[l][node][numBranch-1]
 			}
 		}
 	}
