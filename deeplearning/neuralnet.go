@@ -10,14 +10,15 @@ import (
 //NeuralNet is a neural network composed of a weight matrix "W", bias vector "B",
 //activation function for hdden layers "ActivFuncHidden", activation function for out-put layer "ActivFuncOut".
 type NeuralNet struct {
-	W             [][][]float64
+	W     [][][]float64
+	dW    [][][]float64
+	diffW [][][]float64
+
 	Midval        []linearalgebra.Colvec
 	Output        []linearalgebra.Colvec
 	Delta         []linearalgebra.Colvec
 	ActFuncHidden []ActFuncHiddenSet
 	ActivFuncOut  ActFuncOutputSet
-
-	dW [][][]float64
 
 	ParamMomentum struct {
 		moment [][][]float64
@@ -30,6 +31,7 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 
 	neuralNet.W = make([][][]float64, layers)
 	neuralNet.dW = make([][][]float64, layers)
+	neuralNet.diffW = make([][][]float64, layers)
 	neuralNet.Midval = make([]linearalgebra.Colvec, layers)
 	neuralNet.Output = make([]linearalgebra.Colvec, layers)
 	neuralNet.ParamMomentum.moment = make([][][]float64, layers)
@@ -37,10 +39,12 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	for i := 1; i <= layers-1; i++ {
 		neuralNet.W[i] = make([][]float64, nodes[i])
 		neuralNet.dW[i] = make([][]float64, nodes[i])
+		neuralNet.diffW[i] = make([][]float64, nodes[i])
 		neuralNet.ParamMomentum.moment[i] = make([][]float64, nodes[i])
 		for j := range neuralNet.W[i] {
 			neuralNet.W[i][j] = make([]float64, nodes[i-1]+1) //The last (nodes[i-1]-th) column is bias
 			neuralNet.dW[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.diffW[i][j] = make([]float64, nodes[i-1]+1)
 			neuralNet.ParamMomentum.moment[i][j] = make([]float64, nodes[i-1]+1)
 		}
 
@@ -140,8 +144,56 @@ func (neuralNet NeuralNet) Error(input linearalgebra.Colvec, correct linearalgeb
 	return
 }
 
-//GradDecent optimizes the neural network to fit the given dataset.
-func (neuralNet *NeuralNet) GradDecent(input, correct []linearalgebra.Colvec, learnRate float64) (err float64) {
+//Differentiate calculates differentiation of error function dE/dw of the neuralnetwork based on a given dataset input and correct.
+//The out put is averaged.
+func (neuralNet *NeuralNet) Differentiate(input, correct []linearalgebra.Colvec) {
+	numData := len(input)
+
+	for layer := 1; layer <= len(neuralNet.diffW)-1; layer++ {
+		for j := range neuralNet.diffW[layer] {
+			for i := range neuralNet.diffW[layer][j] {
+				neuralNet.diffW[layer][j][i] = 0.0
+			}
+		}
+	}
+
+	for data := 0; data <= numData-1; data++ {
+		neuralNet.Forward(input[data])
+
+		layer := len(neuralNet.W) - 1
+		for j := range neuralNet.Output[layer] {
+			neuralNet.Delta[layer][j] = neuralNet.Output[layer][j] - correct[data][j]
+		}
+		for layer--; layer >= 1; layer-- {
+			actFuncDiff := neuralNet.ActFuncHidden[layer].Backward(neuralNet.Midval[layer], neuralNet.Output[layer])
+			for j := range neuralNet.Delta[layer] {
+				neuralNet.Delta[layer][j] = 0.0
+				for k := range neuralNet.Delta[layer+1] {
+					neuralNet.Delta[layer][j] += neuralNet.Delta[layer+1][k] * neuralNet.W[layer+1][k][j] * actFuncDiff[j]
+				}
+			}
+		}
+
+		for layer = 1; layer <= len(neuralNet.W)-1; layer++ {
+			for j := range neuralNet.W[layer] {
+				for i := range neuralNet.W[layer][j] {
+					neuralNet.diffW[layer][j][i] += neuralNet.Delta[layer][j] * neuralNet.Output[layer-1][i]
+				}
+			}
+		}
+	}
+
+	for layer := 1; layer <= len(neuralNet.diffW)-1; layer++ {
+		for j := range neuralNet.diffW[layer] {
+			for i := range neuralNet.diffW[layer][j] {
+				neuralNet.diffW[layer][j][i] /= float64(numData)
+			}
+		}
+	}
+}
+
+//GradDescent optimizes the neural network to fit the given dataset.
+func (neuralNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec, learnRate float64) (err float64) {
 	numData := len(input)
 
 	diffW := make([][][]float64, len(neuralNet.W))
