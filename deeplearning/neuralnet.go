@@ -14,19 +14,32 @@ type NeuralNet struct {
 	dW    [][][]float64
 	diffW [][][]float64
 
-	Midval        []linearalgebra.Colvec
-	Output        []linearalgebra.Colvec
-	Delta         []linearalgebra.Colvec
 	ActFuncHidden []ActFuncHiddenSet
 	ActivFuncOut  ActFuncOutputSet
 
+	Midval []linearalgebra.Colvec
+	Output []linearalgebra.Colvec
+	Delta  []linearalgebra.Colvec
+
+	ParamGradDecent struct {
+		//Hyper parameters
+		LearnRate float64
+	}
+
 	ParamMomentum struct {
+		//Hyer parameters
+		LearnRate  float64
+		MomentRate float64
+		//Working parameters
 		moment [][][]float64
 	}
 
 	ParamAdaGrad struct {
+		//Hyper parameters
+		LearnRate float64
+		//Working parameters
 		rep   int
-		SqSum [][][]float64
+		sqSum [][][]float64
 	}
 }
 
@@ -40,20 +53,20 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	neuralNet.Midval = make([]linearalgebra.Colvec, layers)
 	neuralNet.Output = make([]linearalgebra.Colvec, layers)
 	neuralNet.ParamMomentum.moment = make([][][]float64, layers)
-	neuralNet.ParamAdaGrad.SqSum = make([][][]float64, layers)
+	neuralNet.ParamAdaGrad.sqSum = make([][][]float64, layers)
 
 	for i := 1; i <= layers-1; i++ {
 		neuralNet.W[i] = make([][]float64, nodes[i])
 		neuralNet.dW[i] = make([][]float64, nodes[i])
 		neuralNet.diffW[i] = make([][]float64, nodes[i])
 		neuralNet.ParamMomentum.moment[i] = make([][]float64, nodes[i])
-		neuralNet.ParamAdaGrad.SqSum[i] = make([][]float64, nodes[i])
+		neuralNet.ParamAdaGrad.sqSum[i] = make([][]float64, nodes[i])
 		for j := range neuralNet.W[i] {
 			neuralNet.W[i][j] = make([]float64, nodes[i-1]+1) //The last (nodes[i-1]-th) column is bias
 			neuralNet.dW[i][j] = make([]float64, nodes[i-1]+1)
 			neuralNet.diffW[i][j] = make([]float64, nodes[i-1]+1)
 			neuralNet.ParamMomentum.moment[i][j] = make([]float64, nodes[i-1]+1)
-			neuralNet.ParamAdaGrad.SqSum[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamAdaGrad.sqSum[i][j] = make([]float64, nodes[i-1]+1)
 		}
 
 		neuralNet.Midval[i] = make(linearalgebra.Colvec, nodes[i])
@@ -204,7 +217,7 @@ func (neuralNet *NeuralNet) Differentiate(input, correct []linearalgebra.Colvec)
 }
 
 //GradDescent optimizes the neural network to fit the given dataset.
-func (neuralNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec, learnRate float64) (err float64) {
+func (neuralNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec) (err float64) {
 	numData := len(input)
 
 	neuralNet.Differentiate(input, correct)
@@ -212,7 +225,7 @@ func (neuralNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec, l
 	for layer := 1; layer <= len(neuralNet.W)-1; layer++ {
 		for j := range neuralNet.W[layer] {
 			for i := range neuralNet.W[layer][j] {
-				neuralNet.W[layer][j][i] -= neuralNet.diffW[layer][j][i] * learnRate
+				neuralNet.W[layer][j][i] -= neuralNet.diffW[layer][j][i] * neuralNet.ParamGradDecent.LearnRate
 			}
 		}
 	}
@@ -226,27 +239,30 @@ func (neuralNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec, l
 }
 
 //AdaGrad performs AdaGrad optimization.
-func (neuralNet *NeuralNet) AdaGrad(input, correct []linearalgebra.Colvec, learnRate float64) (err float64) {
+func (neuralNet *NeuralNet) AdaGrad(input, correct []linearalgebra.Colvec) (err float64) {
 	numData := len(input)
 
 	if neuralNet.ParamAdaGrad.rep == 0 {
 		smallNum := 1.0e-8
-		neuralNet.GradDescent(input, correct, learnRate)
-		for layer := 1; layer <= len(neuralNet.ParamAdaGrad.SqSum)-1; layer++ {
-			for j := 0; j <= len(neuralNet.ParamAdaGrad.SqSum[layer])-1; j++ {
-				for i := 0; i <= len(neuralNet.ParamAdaGrad.SqSum[layer][j])-1; i++ {
-					neuralNet.ParamAdaGrad.SqSum[layer][j][i] = neuralNet.diffW[layer][j][i]*neuralNet.diffW[layer][j][i] + smallNum
+		tempGradDecLeaRat := neuralNet.ParamGradDecent.LearnRate
+		neuralNet.ParamGradDecent.LearnRate = neuralNet.ParamAdaGrad.LearnRate
+		neuralNet.GradDescent(input, correct)
+		neuralNet.ParamGradDecent.LearnRate = tempGradDecLeaRat
+		for layer := 1; layer <= len(neuralNet.ParamAdaGrad.sqSum)-1; layer++ {
+			for j := 0; j <= len(neuralNet.ParamAdaGrad.sqSum[layer])-1; j++ {
+				for i := 0; i <= len(neuralNet.ParamAdaGrad.sqSum[layer][j])-1; i++ {
+					neuralNet.ParamAdaGrad.sqSum[layer][j][i] = neuralNet.diffW[layer][j][i]*neuralNet.diffW[layer][j][i] + smallNum
 				}
 			}
 		}
 		neuralNet.ParamAdaGrad.rep++
 	} else {
 		neuralNet.Differentiate(input, correct)
-		for layer := 1; layer <= len(neuralNet.ParamAdaGrad.SqSum)-1; layer++ {
-			for j := 0; j <= len(neuralNet.ParamAdaGrad.SqSum[layer])-1; j++ {
-				for i := 0; i <= len(neuralNet.ParamAdaGrad.SqSum[layer][j])-1; i++ {
-					neuralNet.ParamAdaGrad.SqSum[layer][j][i] += neuralNet.diffW[layer][j][i] * neuralNet.diffW[layer][j][i]
-					neuralNet.dW[layer][j][i] = -1.0 * learnRate * neuralNet.diffW[layer][j][i] / math.Sqrt(neuralNet.ParamAdaGrad.SqSum[layer][j][i])
+		for layer := 1; layer <= len(neuralNet.ParamAdaGrad.sqSum)-1; layer++ {
+			for j := 0; j <= len(neuralNet.ParamAdaGrad.sqSum[layer])-1; j++ {
+				for i := 0; i <= len(neuralNet.ParamAdaGrad.sqSum[layer][j])-1; i++ {
+					neuralNet.ParamAdaGrad.sqSum[layer][j][i] += neuralNet.diffW[layer][j][i] * neuralNet.diffW[layer][j][i]
+					neuralNet.dW[layer][j][i] = -1.0 * neuralNet.ParamAdaGrad.LearnRate * neuralNet.diffW[layer][j][i] / math.Sqrt(neuralNet.ParamAdaGrad.sqSum[layer][j][i])
 					neuralNet.W[layer][j][i] += neuralNet.dW[layer][j][i]
 				}
 			}
@@ -263,7 +279,7 @@ func (neuralNet *NeuralNet) AdaGrad(input, correct []linearalgebra.Colvec, learn
 }
 
 //Momentum performs single run of momentum based optimization by using a (mini-) batch.
-func (neuralNet *NeuralNet) Momentum(input, correct []linearalgebra.Colvec, learnRate, momentRate float64) (err float64) {
+func (neuralNet *NeuralNet) Momentum(input, correct []linearalgebra.Colvec) (err float64) {
 	numData := len(input)
 
 	neuralNet.Differentiate(input, correct)
@@ -271,7 +287,7 @@ func (neuralNet *NeuralNet) Momentum(input, correct []linearalgebra.Colvec, lear
 	for layer := 1; layer <= len(neuralNet.W)-1; layer++ {
 		for j := range neuralNet.W[layer] {
 			for i := range neuralNet.W[layer][j] {
-				neuralNet.dW[layer][j][i] = momentRate*neuralNet.ParamMomentum.moment[layer][j][i] - (1.0-momentRate)*learnRate*neuralNet.diffW[layer][j][i]
+				neuralNet.dW[layer][j][i] = neuralNet.ParamMomentum.MomentRate*neuralNet.ParamMomentum.moment[layer][j][i] - (1.0-neuralNet.ParamMomentum.MomentRate)*neuralNet.ParamMomentum.LearnRate*neuralNet.diffW[layer][j][i]
 				neuralNet.W[layer][j][i] += neuralNet.dW[layer][j][i]
 				neuralNet.ParamMomentum.moment[layer][j][i] = neuralNet.dW[layer][j][i]
 			}
