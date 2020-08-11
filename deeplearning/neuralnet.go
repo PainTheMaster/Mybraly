@@ -196,44 +196,12 @@ func (neuralNet *NeuralNet) Differentiate(input, correct []linearalgebra.Colvec)
 func (neuralNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec, learnRate float64) (err float64) {
 	numData := len(input)
 
-	diffW := make([][][]float64, len(neuralNet.W))
-	for layer := range diffW {
-		diffW[layer] = make([][]float64, len(neuralNet.W[layer]))
-		for j := range diffW[layer] {
-			diffW[layer][j] = make([]float64, len(neuralNet.W[layer][j]))
-		}
-	}
-
-	for data := 0; data <= numData-1; data++ {
-		neuralNet.Forward(input[data])
-
-		layer := len(neuralNet.W) - 1
-		for j := range neuralNet.Output[layer] {
-			neuralNet.Delta[layer][j] = neuralNet.Output[layer][j] - correct[data][j]
-		}
-		for layer--; layer >= 1; layer-- {
-			actFuncDiff := neuralNet.ActFuncHidden[layer].Backward(neuralNet.Midval[layer], neuralNet.Output[layer])
-			for j := range neuralNet.Delta[layer] {
-				neuralNet.Delta[layer][j] = 0.0
-				for k := range neuralNet.Delta[layer+1] {
-					neuralNet.Delta[layer][j] += neuralNet.Delta[layer+1][k] * neuralNet.W[layer+1][k][j] * actFuncDiff[j]
-				}
-			}
-		}
-
-		for layer = 1; layer <= len(neuralNet.W)-1; layer++ {
-			for j := range neuralNet.W[layer] {
-				for i := range neuralNet.W[layer][j] {
-					diffW[layer][j][i] += neuralNet.Delta[layer][j] * neuralNet.Output[layer-1][i]
-				}
-			}
-		}
-	}
+	neuralNet.Differentiate(input, correct)
 
 	for layer := 1; layer <= len(neuralNet.W)-1; layer++ {
 		for j := range neuralNet.W[layer] {
 			for i := range neuralNet.W[layer][j] {
-				neuralNet.W[layer][j][i] -= diffW[layer][j][i] / float64(numData) * learnRate
+				neuralNet.W[layer][j][i] -= neuralNet.diffW[layer][j][i] * learnRate
 			}
 		}
 	}
@@ -250,44 +218,12 @@ func (neuralNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec, l
 func (neuralNet *NeuralNet) Momentum(input, correct []linearalgebra.Colvec, learnRate, momentRate float64) (err float64) {
 	numData := len(input)
 
-	diffW := make([][][]float64, len(neuralNet.W))
-	for layer := range diffW {
-		diffW[layer] = make([][]float64, len(neuralNet.W[layer]))
-		for j := range diffW[layer] {
-			diffW[layer][j] = make([]float64, len(neuralNet.W[layer][j]))
-		}
-	}
-
-	for data := 0; data <= numData-1; data++ {
-		neuralNet.Forward(input[data])
-
-		layer := len(neuralNet.W) - 1
-		for j := range neuralNet.Output[layer] {
-			neuralNet.Delta[layer][j] = neuralNet.Output[layer][j] - correct[data][j]
-		}
-		for layer--; layer >= 1; layer-- {
-			actFuncDiff := neuralNet.ActFuncHidden[layer].Backward(neuralNet.Midval[layer], neuralNet.Output[layer])
-			for j := range neuralNet.Delta[layer] {
-				neuralNet.Delta[layer][j] = 0.0
-				for k := range neuralNet.Delta[layer+1] {
-					neuralNet.Delta[layer][j] += neuralNet.Delta[layer+1][k] * neuralNet.W[layer+1][k][j] * actFuncDiff[j]
-				}
-			}
-		}
-
-		for layer = 1; layer <= len(neuralNet.W)-1; layer++ {
-			for j := range neuralNet.W[layer] {
-				for i := range neuralNet.W[layer][j] {
-					diffW[layer][j][i] += neuralNet.Delta[layer][j] * neuralNet.Output[layer-1][i]
-				}
-			}
-		}
-	}
+	neuralNet.Differentiate(input, correct)
 
 	for layer := 1; layer <= len(neuralNet.W)-1; layer++ {
 		for j := range neuralNet.W[layer] {
 			for i := range neuralNet.W[layer][j] {
-				neuralNet.dW[layer][j][i] = momentRate*neuralNet.ParamMomentum.moment[layer][j][i] - (1.0-momentRate)*learnRate*diffW[layer][j][i]/float64(numData)
+				neuralNet.dW[layer][j][i] = momentRate*neuralNet.ParamMomentum.moment[layer][j][i] - (1.0-momentRate)*learnRate*neuralNet.diffW[layer][j][i]
 				neuralNet.W[layer][j][i] += neuralNet.dW[layer][j][i]
 				neuralNet.ParamMomentum.moment[layer][j][i] = neuralNet.dW[layer][j][i]
 			}
