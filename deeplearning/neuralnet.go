@@ -50,6 +50,26 @@ type NeuralNet struct {
 		rep     int
 		expMvAv [][][]float64
 	}
+
+	ParamAdaDelta struct {
+		//Hyper parameters
+		DecayRate float64
+		//WorkingParameters
+		rep         int
+		expMvAvDW   [][][]float64
+		expMvAvGrad [][][]float64
+	}
+
+	ParamAdam struct {
+		//Hyper parameters
+		LearnRate  float64
+		DecayRate1 float64
+		DecayRate2 float64
+		//Working parameters
+		rep        int
+		expMvAvPri [][][]float64
+		expMvAvSec [][][]float64
+	}
 }
 
 //Make makes a new empty nerral network "neuralNet". "nodes" represents the number of nodes in each layer
@@ -62,6 +82,10 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	neuralNet.ParamMomentum.moment = make([][][]float64, layers)
 	neuralNet.ParamAdaGrad.sqSum = make([][][]float64, layers)
 	neuralNet.ParamRMSProp.expMvAv = make([][][]float64, layers)
+	neuralNet.ParamAdaDelta.expMvAvDW = make([][][]float64, layers)
+	neuralNet.ParamAdaDelta.expMvAvGrad = make([][][]float64, layers)
+	neuralNet.ParamAdam.expMvAvPri = make([][][]float64, layers)
+	neuralNet.ParamAdam.expMvAvSec = make([][][]float64, layers)
 
 	neuralNet.Midval = make([]linearalgebra.Colvec, layers)
 	neuralNet.Output = make([]linearalgebra.Colvec, layers)
@@ -73,6 +97,10 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 		neuralNet.ParamMomentum.moment[i] = make([][]float64, nodes[i])
 		neuralNet.ParamAdaGrad.sqSum[i] = make([][]float64, nodes[i])
 		neuralNet.ParamRMSProp.expMvAv[i] = make([][]float64, nodes[i])
+		neuralNet.ParamAdaDelta.expMvAvDW[i] = make([][]float64, nodes[i])
+		neuralNet.ParamAdaDelta.expMvAvGrad[i] = make([][]float64, nodes[i])
+		neuralNet.ParamAdam.expMvAvPri[i] = make([][]float64, nodes[i])
+		neuralNet.ParamAdam.expMvAvSec[i] = make([][]float64, nodes[i])
 		for j := range neuralNet.W[i] {
 			neuralNet.W[i][j] = make([]float64, nodes[i-1]+1) //The last (nodes[i-1]-th) column is bias
 			neuralNet.dW[i][j] = make([]float64, nodes[i-1]+1)
@@ -80,6 +108,10 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 			neuralNet.ParamMomentum.moment[i][j] = make([]float64, nodes[i-1]+1)
 			neuralNet.ParamAdaGrad.sqSum[i][j] = make([]float64, nodes[i-1]+1)
 			neuralNet.ParamRMSProp.expMvAv[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamAdaDelta.expMvAvDW[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamAdaDelta.expMvAvGrad[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamAdam.expMvAvPri[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamAdam.expMvAvSec[i][j] = make([]float64, nodes[i-1]+1)
 		}
 
 		neuralNet.Midval[i] = make(linearalgebra.Colvec, nodes[i])
@@ -238,7 +270,8 @@ func (neuNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec) (err
 	for layer := 1; layer <= len(neuNet.W)-1; layer++ {
 		for j := range neuNet.W[layer] {
 			for i := range neuNet.W[layer][j] {
-				neuNet.W[layer][j][i] -= neuNet.diffW[layer][j][i] * neuNet.ParamGradDecent.LearnRate
+				neuNet.dW[layer][j][i] = (-1.0) * neuNet.diffW[layer][j][i] * neuNet.ParamGradDecent.LearnRate
+				neuNet.W[layer][j][i] += neuNet.dW[layer][j][i]
 			}
 		}
 	}
@@ -349,6 +382,144 @@ func (neuNet *NeuralNet) RMSProp(input, correct []linearalgebra.Colvec) (err flo
 			}
 		}
 		neuNet.ParamRMSProp.rep++
+	}
+
+	err = 0.0
+	for data := range input {
+		err += neuNet.Error(input[data], correct[data])
+	}
+	err /= float64(numData)
+
+	return
+}
+
+//AdaDelta performs optimization of the neuralnet with dimension consistent way.
+func (neuNet *NeuralNet) AdaDelta(input, correct []linearalgebra.Colvec) (err float64) {
+	numData := len(input)
+	DecayRate := neuNet.ParamAdaDelta.DecayRate
+	const LearnRateGradDec = 0.01
+
+	if neuNet.ParamAdaDelta.rep == 0 {
+		smallNum := 1.0e-8
+		tempGradDecLearnRate := neuNet.ParamGradDecent.LearnRate
+		neuNet.ParamGradDecent.LearnRate = LearnRateGradDec
+		neuNet.GradDescent(input, correct)
+		neuNet.ParamGradDecent.LearnRate = tempGradDecLearnRate
+		for layer := 1; layer <= len(neuNet.ParamAdaDelta.expMvAvDW)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamAdaDelta.expMvAvDW[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamAdaDelta.expMvAvDW[layer][j])-1; i++ {
+					neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] = (1.0-DecayRate)*neuNet.dW[layer][j][i]*neuNet.dW[layer][j][i] + smallNum
+					neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i] = (1.0-DecayRate)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i] + smallNum
+				}
+			}
+		}
+		neuNet.ParamAdaDelta.rep++
+	} else {
+		neuNet.Differentiate(input, correct)
+		for layer := 1; layer <= len(neuNet.ParamAdaDelta.expMvAvDW)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamAdaDelta.expMvAvDW[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamAdaDelta.expMvAvDW[layer][j])-1; i++ {
+					neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i] + (1-DecayRate)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i]
+					neuNet.dW[layer][j][i] = -1.0 * math.Sqrt(neuNet.ParamAdaDelta.expMvAvDW[layer][j][i]) / math.Sqrt(neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i]) * neuNet.diffW[layer][j][i]
+					neuNet.W[layer][j][i] += neuNet.dW[layer][j][i]
+					neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] + (1-DecayRate)*neuNet.dW[layer][j][i]*neuNet.dW[layer][j][i]
+				}
+			}
+		}
+		neuNet.ParamAdaDelta.rep++
+	}
+
+	err = 0.0
+	for data := range input {
+		err += neuNet.Error(input[data], correct[data])
+	}
+	err /= float64(numData)
+
+	return
+}
+
+//AdaDelta performs optimization of the neuralnet with dimension consistent way.
+func (neuNet *NeuralNet) AltAdaDelta(input, correct []linearalgebra.Colvec) (err float64) {
+	numData := len(input)
+	DecayRate := neuNet.ParamAdaDelta.DecayRate
+
+	if neuNet.ParamAdaDelta.rep == 0 {
+		smallNum := 1.0e-8
+		neuNet.Differentiate(input, correct)
+
+		for layer := 1; layer <= len(neuNet.ParamAdaDelta.expMvAvDW)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamAdaDelta.expMvAvDW[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamAdaDelta.expMvAvDW[layer][j])-1; i++ {
+					neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] = smallNum
+					neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i] = (1.0-DecayRate)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i] + smallNum
+					neuNet.dW[layer][j][i] = -1.0 * math.Sqrt(neuNet.ParamAdaDelta.expMvAvDW[layer][j][i]) / math.Sqrt(neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i]) * neuNet.diffW[layer][j][i]
+					neuNet.W[layer][j][i] += neuNet.dW[layer][j][i]
+					neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] + (1-DecayRate)*neuNet.dW[layer][j][i]*neuNet.dW[layer][j][i]
+				}
+			}
+		}
+		neuNet.ParamAdaDelta.rep++
+	} else {
+		neuNet.Differentiate(input, correct)
+		for layer := 1; layer <= len(neuNet.ParamAdaDelta.expMvAvDW)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamAdaDelta.expMvAvDW[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamAdaDelta.expMvAvDW[layer][j])-1; i++ {
+					neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i] + (1-DecayRate)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i]
+					neuNet.dW[layer][j][i] = -1.0 * math.Sqrt(neuNet.ParamAdaDelta.expMvAvDW[layer][j][i]) / math.Sqrt(neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i]) * neuNet.diffW[layer][j][i]
+					neuNet.W[layer][j][i] += neuNet.dW[layer][j][i]
+					neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] + (1-DecayRate)*neuNet.dW[layer][j][i]*neuNet.dW[layer][j][i]
+				}
+			}
+		}
+		neuNet.ParamAdaDelta.rep++
+	}
+
+	err = 0.0
+	for data := range input {
+		err += neuNet.Error(input[data], correct[data])
+	}
+	err /= float64(numData)
+
+	return
+}
+
+//RMSProp performs optimization of the nueralnet neuNet by using gradient descent with exponentially-decaying scaling factor.
+func (neuNet *NeuralNet) Adam(input, correct []linearalgebra.Colvec) (err float64) {
+	numData := len(input)
+	LearnRate := neuNet.ParamAdam.LearnRate
+	DecayRate1 := neuNet.ParamAdam.DecayRate1
+	DecayRate2 := neuNet.ParamAdam.DecayRate2
+
+	if neuNet.ParamAdam.rep == 0 {
+		smallNum := 1.0e-8
+		tempGradDecLearnRate := neuNet.ParamGradDecent.LearnRate
+		neuNet.ParamGradDecent.LearnRate = LearnRate
+		neuNet.GradDescent(input, correct)
+		neuNet.ParamGradDecent.LearnRate = tempGradDecLearnRate
+		for layer := 1; layer <= len(neuNet.ParamAdam.expMvAvPri)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamAdam.expMvAvPri[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamAdam.expMvAvPri[layer][j])-1; i++ {
+					neuNet.ParamAdam.expMvAvPri[layer][j][i] = (1 - DecayRate1) * neuNet.diffW[layer][j][i]
+					neuNet.ParamAdam.expMvAvSec[layer][j][i] = (1-DecayRate2)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i] + smallNum
+				}
+			}
+		}
+		neuNet.ParamAdam.rep++
+	} else {
+		neuNet.Differentiate(input, correct)
+		for layer := 1; layer <= len(neuNet.ParamRMSProp.expMvAv)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamRMSProp.expMvAv[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamRMSProp.expMvAv[layer][j])-1; i++ {
+					neuNet.ParamAdam.expMvAvPri[layer][j][i] = DecayRate1*neuNet.ParamAdam.expMvAvPri[layer][j][i] + (1-DecayRate1)*neuNet.diffW[layer][j][i]
+					neuNet.ParamAdam.expMvAvSec[layer][j][i] = DecayRate2*neuNet.ParamAdam.expMvAvSec[layer][j][i] + (1-DecayRate2)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i]
+					rep := neuNet.ParamAdam.rep
+					neuNet.dW[layer][j][i] = -1.0 * LearnRate * neuNet.ParamAdam.expMvAvPri[layer][j][i] / (1 - math.Pow(DecayRate1, float64(rep))) /
+						math.Sqrt(neuNet.ParamAdam.expMvAvSec[layer][j][i]/(1-math.Pow(DecayRate2, float64(rep))))
+					neuNet.W[layer][j][i] += neuNet.dW[layer][j][i]
+				}
+			}
+		}
+		neuNet.ParamAdam.rep++
 	}
 
 	err = 0.0
