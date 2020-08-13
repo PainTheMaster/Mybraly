@@ -1,6 +1,7 @@
 package mnist
 
 import (
+	"PainTheMaster/mybraly/math/linearalgebra"
 	"image"
 	"image/color"
 	"image/png"
@@ -33,6 +34,19 @@ func GetImage(file *os.File, dataNum int) (ans [][]uint8) {
 	return ans
 }
 
+//ImagToColvec transforms [][]uint8 image to a linearalgebra.ColImagToColvec type column vector.
+func ImagToColvec(imag [][]uint8) (colvec linearalgebra.Colvec) {
+	rows := len(imag)
+	cols := len(imag[0])
+	colvec = make(linearalgebra.Colvec, cols*rows)
+	for i := range imag {
+		for j := range imag[i] {
+			colvec[cols*i+j] = float64(imag[i][j])
+		}
+	}
+	return
+}
+
 //GetLabel gets dataNum-th label from a given file
 func GetLabel(file *os.File, dataNum int) (ans int) {
 	const (
@@ -46,6 +60,14 @@ func GetLabel(file *os.File, dataNum int) (ans int) {
 
 	ans = int(buf[0])
 
+	return
+}
+
+//LabelOneHot makes one-hot expression of the label
+func LabelOneHot(label int) (colvec linearalgebra.Colvec) {
+	const lenVec = 10
+	colvec = make(linearalgebra.Colvec, lenVec)
+	colvec[label] = 1.0
 	return
 }
 
