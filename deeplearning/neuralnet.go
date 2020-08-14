@@ -144,15 +144,6 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 			for br := range neuralNet.W[l][node] {
 				neuralNet.W[l][node][br] = newRand.NormFloat64()*randStdev + randAve
 			}
-			if neuralNet.W[l][node][numBranch-1] < 0 {
-				var idxMax int = numBranch - 2
-				for i := numBranch - 2; i >= 0; i-- {
-					if neuralNet.W[l][node][i] > neuralNet.W[l][node][idxMax] {
-						idxMax = i
-					}
-				}
-				neuralNet.W[l][node][numBranch-1], neuralNet.W[l][node][idxMax] = neuralNet.W[l][node][idxMax], neuralNet.W[l][node][numBranch-1]
-			}
 		}
 	}
 	{
@@ -162,15 +153,6 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 			randStdev := neuralNet.ActivFuncOut.StdevWtFunc(numBranch)
 			for br := range neuralNet.W[l][node] {
 				neuralNet.W[l][node][br] = newRand.NormFloat64()*randStdev + randAve
-			}
-			if neuralNet.W[l][node][numBranch-1] < 0 {
-				var idxMax int = numBranch - 2
-				for i := numBranch - 2; i >= 0; i-- {
-					if neuralNet.W[l][node][i] > neuralNet.W[l][node][idxMax] {
-						idxMax = i
-					}
-				}
-				neuralNet.W[l][node][numBranch-1], neuralNet.W[l][node][idxMax] = neuralNet.W[l][node][idxMax], neuralNet.W[l][node][numBranch-1]
 			}
 		}
 	}
