@@ -136,7 +136,7 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	var seed int64 = 100
 	randSource := rand.NewSource(seed)
 	newRand := rand.New(randSource)
-	randAve := 0.01
+	randAve := 0.00
 	for l := 1; l <= layers-2; l++ {
 		for node := range neuralNet.W[l] {
 			numBranch := len(neuralNet.W[l][0])
@@ -271,8 +271,9 @@ func (neuNet NeuralNet) Test(testImg, testLabel *os.File, repet int) (accuracyPc
 	for try := 1; try <= repet; try++ {
 		var pickedImg linearalgebra.Colvec
 		var pickedLabel int
+		var id int
 		for {
-			id := randGener.Intn(numImgs)
+			id = randGener.Intn(numImgs)
 			if !picked[id] {
 				pickedImg = mnist.ImagToColvec(mnist.GetImage(testImg, id))
 				pickedLabel = mnist.GetLabel(testLabel, id)
@@ -287,6 +288,7 @@ func (neuNet NeuralNet) Test(testImg, testLabel *os.File, repet int) (accuracyPc
 			ok++
 		} else {
 			nok++
+			fmt.Printf("Not OK: %d, corr:%d, inf: %d\n", id, pickedLabel, infLabel)
 		}
 	}
 
