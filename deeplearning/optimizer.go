@@ -20,10 +20,10 @@ const (
 func (neuNet *NeuralNet) Differentiate(input, correct []linearalgebra.Colvec) {
 	numData := len(input)
 
-	for layer := 1; layer <= len(neuNet.diffW)-1; layer++ {
-		for j := range neuNet.diffW[layer] {
-			for i := range neuNet.diffW[layer][j] {
-				neuNet.diffW[layer][j][i] = 0.0
+	for layer := 1; layer <= len(neuNet.DiffW)-1; layer++ {
+		for j := range neuNet.DiffW[layer] {
+			for i := range neuNet.DiffW[layer][j] {
+				neuNet.DiffW[layer][j][i] = 0.0
 			}
 		}
 	}
@@ -48,16 +48,16 @@ func (neuNet *NeuralNet) Differentiate(input, correct []linearalgebra.Colvec) {
 		for layer = 1; layer <= len(neuNet.W)-1; layer++ {
 			for j := range neuNet.W[layer] {
 				for i := range neuNet.W[layer][j] {
-					neuNet.diffW[layer][j][i] += neuNet.Delta[layer][j] * neuNet.Output[layer-1][i]
+					neuNet.DiffW[layer][j][i] += neuNet.Delta[layer][j] * neuNet.Output[layer-1][i]
 				}
 			}
 		}
 	}
 
-	for layer := 1; layer <= len(neuNet.diffW)-1; layer++ {
-		for j := range neuNet.diffW[layer] {
-			for i := range neuNet.diffW[layer][j] {
-				neuNet.diffW[layer][j][i] /= float64(numData)
+	for layer := 1; layer <= len(neuNet.DiffW)-1; layer++ {
+		for j := range neuNet.DiffW[layer] {
+			for i := range neuNet.DiffW[layer][j] {
+				neuNet.DiffW[layer][j][i] /= float64(numData)
 			}
 		}
 	}
@@ -72,8 +72,8 @@ func (neuNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec) (err
 	for layer := 1; layer <= len(neuNet.W)-1; layer++ {
 		for j := range neuNet.W[layer] {
 			for i := range neuNet.W[layer][j] {
-				neuNet.dW[layer][j][i] = (-1.0) * neuNet.diffW[layer][j][i] * neuNet.ParamGradDecent.LearnRate
-				neuNet.W[layer][j][i] += neuNet.dW[layer][j][i]
+				neuNet.DW[layer][j][i] = (-1.0) * neuNet.DiffW[layer][j][i] * neuNet.ParamGradDecent.LearnRate
+				neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
 			}
 		}
 	}
@@ -90,32 +90,32 @@ func (neuNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec) (err
 func (neuNet *NeuralNet) AdaGrad(input, correct []linearalgebra.Colvec) (err float64) {
 	numData := len(input)
 
-	if neuNet.ParamAdaGrad.rep == 0 {
+	if neuNet.ParamAdaGrad.Rep == 0 {
 		smallNum := 1.0e-8
 		tempGradDecLeaRat := neuNet.ParamGradDecent.LearnRate
 		neuNet.ParamGradDecent.LearnRate = neuNet.ParamAdaGrad.LearnRate
 		neuNet.GradDescent(input, correct)
 		neuNet.ParamGradDecent.LearnRate = tempGradDecLeaRat
-		for layer := 1; layer <= len(neuNet.ParamAdaGrad.sqSum)-1; layer++ {
-			for j := 0; j <= len(neuNet.ParamAdaGrad.sqSum[layer])-1; j++ {
-				for i := 0; i <= len(neuNet.ParamAdaGrad.sqSum[layer][j])-1; i++ {
-					neuNet.ParamAdaGrad.sqSum[layer][j][i] = neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i] + smallNum
+		for layer := 1; layer <= len(neuNet.ParamAdaGrad.SqSum)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamAdaGrad.SqSum[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamAdaGrad.SqSum[layer][j])-1; i++ {
+					neuNet.ParamAdaGrad.SqSum[layer][j][i] = neuNet.DiffW[layer][j][i]*neuNet.DiffW[layer][j][i] + smallNum
 				}
 			}
 		}
-		neuNet.ParamAdaGrad.rep++
+		neuNet.ParamAdaGrad.Rep++
 	} else {
 		neuNet.Differentiate(input, correct)
-		for layer := 1; layer <= len(neuNet.ParamAdaGrad.sqSum)-1; layer++ {
-			for j := 0; j <= len(neuNet.ParamAdaGrad.sqSum[layer])-1; j++ {
-				for i := 0; i <= len(neuNet.ParamAdaGrad.sqSum[layer][j])-1; i++ {
-					neuNet.ParamAdaGrad.sqSum[layer][j][i] += neuNet.diffW[layer][j][i] * neuNet.diffW[layer][j][i]
-					neuNet.dW[layer][j][i] = -1.0 * neuNet.ParamAdaGrad.LearnRate * neuNet.diffW[layer][j][i] / math.Sqrt(neuNet.ParamAdaGrad.sqSum[layer][j][i])
-					neuNet.W[layer][j][i] += neuNet.dW[layer][j][i]
+		for layer := 1; layer <= len(neuNet.ParamAdaGrad.SqSum)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamAdaGrad.SqSum[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamAdaGrad.SqSum[layer][j])-1; i++ {
+					neuNet.ParamAdaGrad.SqSum[layer][j][i] += neuNet.DiffW[layer][j][i] * neuNet.DiffW[layer][j][i]
+					neuNet.DW[layer][j][i] = -1.0 * neuNet.ParamAdaGrad.LearnRate * neuNet.DiffW[layer][j][i] / math.Sqrt(neuNet.ParamAdaGrad.SqSum[layer][j][i])
+					neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
 				}
 			}
 		}
-		neuNet.ParamAdaGrad.rep++
+		neuNet.ParamAdaGrad.Rep++
 	}
 
 	err = 0.0
@@ -135,9 +135,9 @@ func (neuNet *NeuralNet) Momentum(input, correct []linearalgebra.Colvec) (err fl
 	for layer := 1; layer <= len(neuNet.W)-1; layer++ {
 		for j := range neuNet.W[layer] {
 			for i := range neuNet.W[layer][j] {
-				neuNet.dW[layer][j][i] = neuNet.ParamMomentum.MomentRate*neuNet.ParamMomentum.moment[layer][j][i] - (1.0-neuNet.ParamMomentum.MomentRate)*neuNet.ParamMomentum.LearnRate*neuNet.diffW[layer][j][i]
-				neuNet.W[layer][j][i] += neuNet.dW[layer][j][i]
-				neuNet.ParamMomentum.moment[layer][j][i] = neuNet.dW[layer][j][i]
+				neuNet.DW[layer][j][i] = neuNet.ParamMomentum.MomentRate*neuNet.ParamMomentum.moment[layer][j][i] - (1.0-neuNet.ParamMomentum.MomentRate)*neuNet.ParamMomentum.LearnRate*neuNet.DiffW[layer][j][i]
+				neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
+				neuNet.ParamMomentum.moment[layer][j][i] = neuNet.DW[layer][j][i]
 			}
 		}
 	}
@@ -158,32 +158,32 @@ func (neuNet *NeuralNet) RMSProp(input, correct []linearalgebra.Colvec) (err flo
 	DecayRate := neuNet.ParamRMSProp.DecayRate
 	LearnRate := neuNet.ParamRMSProp.LearnRate
 
-	if neuNet.ParamRMSProp.rep == 0 {
+	if neuNet.ParamRMSProp.Rep == 0 {
 		smallNum := 1.0e-8
 		tempGradDecLearnRate := neuNet.ParamGradDecent.LearnRate
 		neuNet.ParamGradDecent.LearnRate = LearnRate
 		neuNet.GradDescent(input, correct)
 		neuNet.ParamGradDecent.LearnRate = tempGradDecLearnRate
-		for layer := 1; layer <= len(neuNet.ParamRMSProp.expMvAv)-1; layer++ {
-			for j := 0; j <= len(neuNet.ParamRMSProp.expMvAv[layer])-1; j++ {
-				for i := 0; i <= len(neuNet.ParamRMSProp.expMvAv[layer][j])-1; i++ {
-					neuNet.ParamRMSProp.expMvAv[layer][j][i] = (1-DecayRate)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i] + smallNum
+		for layer := 1; layer <= len(neuNet.ParamRMSProp.ExpMvAv)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamRMSProp.ExpMvAv[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamRMSProp.ExpMvAv[layer][j])-1; i++ {
+					neuNet.ParamRMSProp.ExpMvAv[layer][j][i] = (1-DecayRate)*neuNet.DiffW[layer][j][i]*neuNet.DiffW[layer][j][i] + smallNum
 				}
 			}
 		}
-		neuNet.ParamRMSProp.rep++
+		neuNet.ParamRMSProp.Rep++
 	} else {
 		neuNet.Differentiate(input, correct)
-		for layer := 1; layer <= len(neuNet.ParamRMSProp.expMvAv)-1; layer++ {
-			for j := 0; j <= len(neuNet.ParamRMSProp.expMvAv[layer])-1; j++ {
-				for i := 0; i <= len(neuNet.ParamRMSProp.expMvAv[layer][j])-1; i++ {
-					neuNet.ParamRMSProp.expMvAv[layer][j][i] = DecayRate*neuNet.ParamRMSProp.expMvAv[layer][j][i] + (1-DecayRate)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i]
-					neuNet.dW[layer][j][i] = -1.0 * LearnRate * neuNet.diffW[layer][j][i] / math.Sqrt(neuNet.ParamRMSProp.expMvAv[layer][j][i])
-					neuNet.W[layer][j][i] += neuNet.dW[layer][j][i]
+		for layer := 1; layer <= len(neuNet.ParamRMSProp.ExpMvAv)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamRMSProp.ExpMvAv[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamRMSProp.ExpMvAv[layer][j])-1; i++ {
+					neuNet.ParamRMSProp.ExpMvAv[layer][j][i] = DecayRate*neuNet.ParamRMSProp.ExpMvAv[layer][j][i] + (1-DecayRate)*neuNet.DiffW[layer][j][i]*neuNet.DiffW[layer][j][i]
+					neuNet.DW[layer][j][i] = -1.0 * LearnRate * neuNet.DiffW[layer][j][i] / math.Sqrt(neuNet.ParamRMSProp.ExpMvAv[layer][j][i])
+					neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
 				}
 			}
 		}
-		neuNet.ParamRMSProp.rep++
+		neuNet.ParamRMSProp.Rep++
 	}
 
 	err = 0.0
@@ -201,34 +201,34 @@ func (neuNet *NeuralNet) AdaDelta(input, correct []linearalgebra.Colvec) (err fl
 	DecayRate := neuNet.ParamAdaDelta.DecayRate
 	const LearnRateGradDec = 0.01
 
-	if neuNet.ParamAdaDelta.rep == 0 {
+	if neuNet.ParamAdaDelta.Rep == 0 {
 		smallNum := 1.0e-8
 		tempGradDecLearnRate := neuNet.ParamGradDecent.LearnRate
 		neuNet.ParamGradDecent.LearnRate = LearnRateGradDec
 		neuNet.GradDescent(input, correct)
 		neuNet.ParamGradDecent.LearnRate = tempGradDecLearnRate
-		for layer := 1; layer <= len(neuNet.ParamAdaDelta.expMvAvDW)-1; layer++ {
-			for j := 0; j <= len(neuNet.ParamAdaDelta.expMvAvDW[layer])-1; j++ {
-				for i := 0; i <= len(neuNet.ParamAdaDelta.expMvAvDW[layer][j])-1; i++ {
-					neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] = (1.0-DecayRate)*neuNet.dW[layer][j][i]*neuNet.dW[layer][j][i] + smallNum
-					neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i] = (1.0-DecayRate)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i] + smallNum
+		for layer := 1; layer <= len(neuNet.ParamAdaDelta.ExpMvAvDW)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamAdaDelta.ExpMvAvDW[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamAdaDelta.ExpMvAvDW[layer][j])-1; i++ {
+					neuNet.ParamAdaDelta.ExpMvAvDW[layer][j][i] = (1.0-DecayRate)*neuNet.DW[layer][j][i]*neuNet.DW[layer][j][i] + smallNum
+					neuNet.ParamAdaDelta.ExpMvAvGrad[layer][j][i] = (1.0-DecayRate)*neuNet.DiffW[layer][j][i]*neuNet.DiffW[layer][j][i] + smallNum
 				}
 			}
 		}
-		neuNet.ParamAdaDelta.rep++
+		neuNet.ParamAdaDelta.Rep++
 	} else {
 		neuNet.Differentiate(input, correct)
-		for layer := 1; layer <= len(neuNet.ParamAdaDelta.expMvAvDW)-1; layer++ {
-			for j := 0; j <= len(neuNet.ParamAdaDelta.expMvAvDW[layer])-1; j++ {
-				for i := 0; i <= len(neuNet.ParamAdaDelta.expMvAvDW[layer][j])-1; i++ {
-					neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i] + (1-DecayRate)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i]
-					neuNet.dW[layer][j][i] = -1.0 * math.Sqrt(neuNet.ParamAdaDelta.expMvAvDW[layer][j][i]) / math.Sqrt(neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i]) * neuNet.diffW[layer][j][i]
-					neuNet.W[layer][j][i] += neuNet.dW[layer][j][i]
-					neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] + (1-DecayRate)*neuNet.dW[layer][j][i]*neuNet.dW[layer][j][i]
+		for layer := 1; layer <= len(neuNet.ParamAdaDelta.ExpMvAvDW)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamAdaDelta.ExpMvAvDW[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamAdaDelta.ExpMvAvDW[layer][j])-1; i++ {
+					neuNet.ParamAdaDelta.ExpMvAvGrad[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.ExpMvAvGrad[layer][j][i] + (1-DecayRate)*neuNet.DiffW[layer][j][i]*neuNet.DiffW[layer][j][i]
+					neuNet.DW[layer][j][i] = -1.0 * math.Sqrt(neuNet.ParamAdaDelta.ExpMvAvDW[layer][j][i]) / math.Sqrt(neuNet.ParamAdaDelta.ExpMvAvGrad[layer][j][i]) * neuNet.DiffW[layer][j][i]
+					neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
+					neuNet.ParamAdaDelta.ExpMvAvDW[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.ExpMvAvDW[layer][j][i] + (1-DecayRate)*neuNet.DW[layer][j][i]*neuNet.DW[layer][j][i]
 				}
 			}
 		}
-		neuNet.ParamAdaDelta.rep++
+		neuNet.ParamAdaDelta.Rep++
 	}
 
 	err = 0.0
@@ -245,35 +245,35 @@ func (neuNet *NeuralNet) AltAdaDelta(input, correct []linearalgebra.Colvec) (err
 	numData := len(input)
 	DecayRate := neuNet.ParamAdaDelta.DecayRate
 
-	if neuNet.ParamAdaDelta.rep == 0 {
+	if neuNet.ParamAdaDelta.Rep == 0 {
 		smallNum := 1.0e-8
 		neuNet.Differentiate(input, correct)
 
-		for layer := 1; layer <= len(neuNet.ParamAdaDelta.expMvAvDW)-1; layer++ {
-			for j := 0; j <= len(neuNet.ParamAdaDelta.expMvAvDW[layer])-1; j++ {
-				for i := 0; i <= len(neuNet.ParamAdaDelta.expMvAvDW[layer][j])-1; i++ {
-					neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] = smallNum
-					neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i] = (1.0-DecayRate)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i] + smallNum
-					neuNet.dW[layer][j][i] = -1.0 * math.Sqrt(neuNet.ParamAdaDelta.expMvAvDW[layer][j][i]) / math.Sqrt(neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i]) * neuNet.diffW[layer][j][i]
-					neuNet.W[layer][j][i] += neuNet.dW[layer][j][i]
-					neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] + (1-DecayRate)*neuNet.dW[layer][j][i]*neuNet.dW[layer][j][i]
+		for layer := 1; layer <= len(neuNet.ParamAdaDelta.ExpMvAvDW)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamAdaDelta.ExpMvAvDW[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamAdaDelta.ExpMvAvDW[layer][j])-1; i++ {
+					neuNet.ParamAdaDelta.ExpMvAvDW[layer][j][i] = smallNum
+					neuNet.ParamAdaDelta.ExpMvAvGrad[layer][j][i] = (1.0-DecayRate)*neuNet.DiffW[layer][j][i]*neuNet.DiffW[layer][j][i] + smallNum
+					neuNet.DW[layer][j][i] = -1.0 * math.Sqrt(neuNet.ParamAdaDelta.ExpMvAvDW[layer][j][i]) / math.Sqrt(neuNet.ParamAdaDelta.ExpMvAvGrad[layer][j][i]) * neuNet.DiffW[layer][j][i]
+					neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
+					neuNet.ParamAdaDelta.ExpMvAvDW[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.ExpMvAvDW[layer][j][i] + (1-DecayRate)*neuNet.DW[layer][j][i]*neuNet.DW[layer][j][i]
 				}
 			}
 		}
-		neuNet.ParamAdaDelta.rep++
+		neuNet.ParamAdaDelta.Rep++
 	} else {
 		neuNet.Differentiate(input, correct)
-		for layer := 1; layer <= len(neuNet.ParamAdaDelta.expMvAvDW)-1; layer++ {
-			for j := 0; j <= len(neuNet.ParamAdaDelta.expMvAvDW[layer])-1; j++ {
-				for i := 0; i <= len(neuNet.ParamAdaDelta.expMvAvDW[layer][j])-1; i++ {
-					neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i] + (1-DecayRate)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i]
-					neuNet.dW[layer][j][i] = -1.0 * math.Sqrt(neuNet.ParamAdaDelta.expMvAvDW[layer][j][i]) / math.Sqrt(neuNet.ParamAdaDelta.expMvAvGrad[layer][j][i]) * neuNet.diffW[layer][j][i]
-					neuNet.W[layer][j][i] += neuNet.dW[layer][j][i]
-					neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.expMvAvDW[layer][j][i] + (1-DecayRate)*neuNet.dW[layer][j][i]*neuNet.dW[layer][j][i]
+		for layer := 1; layer <= len(neuNet.ParamAdaDelta.ExpMvAvDW)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamAdaDelta.ExpMvAvDW[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamAdaDelta.ExpMvAvDW[layer][j])-1; i++ {
+					neuNet.ParamAdaDelta.ExpMvAvGrad[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.ExpMvAvGrad[layer][j][i] + (1-DecayRate)*neuNet.DiffW[layer][j][i]*neuNet.DiffW[layer][j][i]
+					neuNet.DW[layer][j][i] = -1.0 * math.Sqrt(neuNet.ParamAdaDelta.ExpMvAvDW[layer][j][i]) / math.Sqrt(neuNet.ParamAdaDelta.ExpMvAvGrad[layer][j][i]) * neuNet.DiffW[layer][j][i]
+					neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
+					neuNet.ParamAdaDelta.ExpMvAvDW[layer][j][i] = DecayRate*neuNet.ParamAdaDelta.ExpMvAvDW[layer][j][i] + (1-DecayRate)*neuNet.DW[layer][j][i]*neuNet.DW[layer][j][i]
 				}
 			}
 		}
-		neuNet.ParamAdaDelta.rep++
+		neuNet.ParamAdaDelta.Rep++
 	}
 
 	err = 0.0
@@ -292,36 +292,36 @@ func (neuNet *NeuralNet) Adam(input, correct []linearalgebra.Colvec) (err float6
 	DecayRate1 := neuNet.ParamAdam.DecayRate1
 	DecayRate2 := neuNet.ParamAdam.DecayRate2
 
-	if neuNet.ParamAdam.rep == 0 {
+	if neuNet.ParamAdam.Rep == 0 {
 		smallNum := 1.0e-8
 		tempGradDecLearnRate := neuNet.ParamGradDecent.LearnRate
 		neuNet.ParamGradDecent.LearnRate = LearnRate
 		neuNet.GradDescent(input, correct)
 		neuNet.ParamGradDecent.LearnRate = tempGradDecLearnRate
-		for layer := 1; layer <= len(neuNet.ParamAdam.expMvAvPri)-1; layer++ {
-			for j := 0; j <= len(neuNet.ParamAdam.expMvAvPri[layer])-1; j++ {
-				for i := 0; i <= len(neuNet.ParamAdam.expMvAvPri[layer][j])-1; i++ {
-					neuNet.ParamAdam.expMvAvPri[layer][j][i] = (1 - DecayRate1) * neuNet.diffW[layer][j][i]
-					neuNet.ParamAdam.expMvAvSec[layer][j][i] = (1-DecayRate2)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i] + smallNum
+		for layer := 1; layer <= len(neuNet.ParamAdam.ExpMvAvPri)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamAdam.ExpMvAvPri[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamAdam.ExpMvAvPri[layer][j])-1; i++ {
+					neuNet.ParamAdam.ExpMvAvPri[layer][j][i] = (1 - DecayRate1) * neuNet.DiffW[layer][j][i]
+					neuNet.ParamAdam.ExpMvAvSec[layer][j][i] = (1-DecayRate2)*neuNet.DiffW[layer][j][i]*neuNet.DiffW[layer][j][i] + smallNum
 				}
 			}
 		}
-		neuNet.ParamAdam.rep++
+		neuNet.ParamAdam.Rep++
 	} else {
 		neuNet.Differentiate(input, correct)
-		for layer := 1; layer <= len(neuNet.ParamRMSProp.expMvAv)-1; layer++ {
-			for j := 0; j <= len(neuNet.ParamRMSProp.expMvAv[layer])-1; j++ {
-				for i := 0; i <= len(neuNet.ParamRMSProp.expMvAv[layer][j])-1; i++ {
-					neuNet.ParamAdam.expMvAvPri[layer][j][i] = DecayRate1*neuNet.ParamAdam.expMvAvPri[layer][j][i] + (1-DecayRate1)*neuNet.diffW[layer][j][i]
-					neuNet.ParamAdam.expMvAvSec[layer][j][i] = DecayRate2*neuNet.ParamAdam.expMvAvSec[layer][j][i] + (1-DecayRate2)*neuNet.diffW[layer][j][i]*neuNet.diffW[layer][j][i]
-					rep := neuNet.ParamAdam.rep
-					neuNet.dW[layer][j][i] = -1.0 * LearnRate * neuNet.ParamAdam.expMvAvPri[layer][j][i] / (1 - math.Pow(DecayRate1, float64(rep))) /
-						math.Sqrt(neuNet.ParamAdam.expMvAvSec[layer][j][i]/(1-math.Pow(DecayRate2, float64(rep))))
-					neuNet.W[layer][j][i] += neuNet.dW[layer][j][i]
+		for layer := 1; layer <= len(neuNet.ParamRMSProp.ExpMvAv)-1; layer++ {
+			for j := 0; j <= len(neuNet.ParamRMSProp.ExpMvAv[layer])-1; j++ {
+				for i := 0; i <= len(neuNet.ParamRMSProp.ExpMvAv[layer][j])-1; i++ {
+					neuNet.ParamAdam.ExpMvAvPri[layer][j][i] = DecayRate1*neuNet.ParamAdam.ExpMvAvPri[layer][j][i] + (1-DecayRate1)*neuNet.DiffW[layer][j][i]
+					neuNet.ParamAdam.ExpMvAvSec[layer][j][i] = DecayRate2*neuNet.ParamAdam.ExpMvAvSec[layer][j][i] + (1-DecayRate2)*neuNet.DiffW[layer][j][i]*neuNet.DiffW[layer][j][i]
+					rep := neuNet.ParamAdam.Rep
+					neuNet.DW[layer][j][i] = -1.0 * LearnRate * neuNet.ParamAdam.ExpMvAvPri[layer][j][i] / (1 - math.Pow(DecayRate1, float64(rep))) /
+						math.Sqrt(neuNet.ParamAdam.ExpMvAvSec[layer][j][i]/(1-math.Pow(DecayRate2, float64(rep))))
+					neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
 				}
 			}
 		}
-		neuNet.ParamAdam.rep++
+		neuNet.ParamAdam.Rep++
 	}
 
 	err = 0.0
