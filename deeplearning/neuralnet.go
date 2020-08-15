@@ -13,8 +13,8 @@ import (
 //activation function for hdden layers "ActivFuncHidden", activation function for out-put layer "ActivFuncOut".
 type NeuralNet struct {
 	W     [][][]float64
-	dW    [][][]float64
-	diffW [][][]float64
+	DW    [][][]float64
+	DiffW [][][]float64
 
 	ActFuncHidden []ActFuncHiddenSet
 	ActivFuncOut  ActFuncOutputSet
@@ -40,8 +40,8 @@ type NeuralNet struct {
 		//Hyper parameters
 		LearnRate float64
 		//Working parameters
-		rep   int
-		sqSum [][][]float64
+		Rep   int
+		SqSum [][][]float64
 	}
 
 	ParamRMSProp struct {
@@ -49,17 +49,17 @@ type NeuralNet struct {
 		LearnRate float64
 		DecayRate float64
 		//Working parameters
-		rep     int
-		expMvAv [][][]float64
+		Rep     int
+		ExpMvAv [][][]float64
 	}
 
 	ParamAdaDelta struct {
 		//Hyper parameters
 		DecayRate float64
 		//WorkingParameters
-		rep         int
-		expMvAvDW   [][][]float64
-		expMvAvGrad [][][]float64
+		Rep         int
+		ExpMvAvDW   [][][]float64
+		ExpMvAvGrad [][][]float64
 	}
 
 	ParamAdam struct {
@@ -68,9 +68,9 @@ type NeuralNet struct {
 		DecayRate1 float64
 		DecayRate2 float64
 		//Working parameters
-		rep        int
-		expMvAvPri [][][]float64
-		expMvAvSec [][][]float64
+		Rep        int
+		ExpMvAvPri [][][]float64
+		ExpMvAvSec [][][]float64
 	}
 }
 
@@ -79,41 +79,41 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	layers := len(nodes)
 
 	neuralNet.W = make([][][]float64, layers)
-	neuralNet.dW = make([][][]float64, layers)
-	neuralNet.diffW = make([][][]float64, layers)
+	neuralNet.DW = make([][][]float64, layers)
+	neuralNet.DiffW = make([][][]float64, layers)
 	neuralNet.ParamMomentum.moment = make([][][]float64, layers)
-	neuralNet.ParamAdaGrad.sqSum = make([][][]float64, layers)
-	neuralNet.ParamRMSProp.expMvAv = make([][][]float64, layers)
-	neuralNet.ParamAdaDelta.expMvAvDW = make([][][]float64, layers)
-	neuralNet.ParamAdaDelta.expMvAvGrad = make([][][]float64, layers)
-	neuralNet.ParamAdam.expMvAvPri = make([][][]float64, layers)
-	neuralNet.ParamAdam.expMvAvSec = make([][][]float64, layers)
+	neuralNet.ParamAdaGrad.SqSum = make([][][]float64, layers)
+	neuralNet.ParamRMSProp.ExpMvAv = make([][][]float64, layers)
+	neuralNet.ParamAdaDelta.ExpMvAvDW = make([][][]float64, layers)
+	neuralNet.ParamAdaDelta.ExpMvAvGrad = make([][][]float64, layers)
+	neuralNet.ParamAdam.ExpMvAvPri = make([][][]float64, layers)
+	neuralNet.ParamAdam.ExpMvAvSec = make([][][]float64, layers)
 
 	neuralNet.Midval = make([]linearalgebra.Colvec, layers)
 	neuralNet.Output = make([]linearalgebra.Colvec, layers)
 
 	for i := 1; i <= layers-1; i++ {
 		neuralNet.W[i] = make([][]float64, nodes[i])
-		neuralNet.dW[i] = make([][]float64, nodes[i])
-		neuralNet.diffW[i] = make([][]float64, nodes[i])
+		neuralNet.DW[i] = make([][]float64, nodes[i])
+		neuralNet.DiffW[i] = make([][]float64, nodes[i])
 		neuralNet.ParamMomentum.moment[i] = make([][]float64, nodes[i])
-		neuralNet.ParamAdaGrad.sqSum[i] = make([][]float64, nodes[i])
-		neuralNet.ParamRMSProp.expMvAv[i] = make([][]float64, nodes[i])
-		neuralNet.ParamAdaDelta.expMvAvDW[i] = make([][]float64, nodes[i])
-		neuralNet.ParamAdaDelta.expMvAvGrad[i] = make([][]float64, nodes[i])
-		neuralNet.ParamAdam.expMvAvPri[i] = make([][]float64, nodes[i])
-		neuralNet.ParamAdam.expMvAvSec[i] = make([][]float64, nodes[i])
+		neuralNet.ParamAdaGrad.SqSum[i] = make([][]float64, nodes[i])
+		neuralNet.ParamRMSProp.ExpMvAv[i] = make([][]float64, nodes[i])
+		neuralNet.ParamAdaDelta.ExpMvAvDW[i] = make([][]float64, nodes[i])
+		neuralNet.ParamAdaDelta.ExpMvAvGrad[i] = make([][]float64, nodes[i])
+		neuralNet.ParamAdam.ExpMvAvPri[i] = make([][]float64, nodes[i])
+		neuralNet.ParamAdam.ExpMvAvSec[i] = make([][]float64, nodes[i])
 		for j := range neuralNet.W[i] {
 			neuralNet.W[i][j] = make([]float64, nodes[i-1]+1) //The last (nodes[i-1]-th) column is bias
-			neuralNet.dW[i][j] = make([]float64, nodes[i-1]+1)
-			neuralNet.diffW[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.DW[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.DiffW[i][j] = make([]float64, nodes[i-1]+1)
 			neuralNet.ParamMomentum.moment[i][j] = make([]float64, nodes[i-1]+1)
-			neuralNet.ParamAdaGrad.sqSum[i][j] = make([]float64, nodes[i-1]+1)
-			neuralNet.ParamRMSProp.expMvAv[i][j] = make([]float64, nodes[i-1]+1)
-			neuralNet.ParamAdaDelta.expMvAvDW[i][j] = make([]float64, nodes[i-1]+1)
-			neuralNet.ParamAdaDelta.expMvAvGrad[i][j] = make([]float64, nodes[i-1]+1)
-			neuralNet.ParamAdam.expMvAvPri[i][j] = make([]float64, nodes[i-1]+1)
-			neuralNet.ParamAdam.expMvAvSec[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamAdaGrad.SqSum[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamRMSProp.ExpMvAv[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamAdaDelta.ExpMvAvDW[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamAdaDelta.ExpMvAvGrad[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamAdam.ExpMvAvPri[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamAdam.ExpMvAvSec[i][j] = make([]float64, nodes[i-1]+1)
 		}
 
 		neuralNet.Midval[i] = make(linearalgebra.Colvec, nodes[i])
@@ -157,7 +157,7 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 		}
 	}
 
-	neuralNet.ParamAdaGrad.rep = 0
+	neuralNet.ParamAdaGrad.Rep = 0
 
 	return
 }
