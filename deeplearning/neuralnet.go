@@ -92,6 +92,10 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	neuralNet.Midval = make([]linearalgebra.Colvec, layers)
 	neuralNet.Output = make([]linearalgebra.Colvec, layers)
 
+	//	neuralNet.W[0] = [][]float64{{0}, {0}}
+	//	neuralNet.DW[0] = [][]float64{{0}, {0}}
+	//	neuralNet.DiffW[0] = [][]float64{{0}, {0}}
+
 	for i := 1; i <= layers-1; i++ {
 		neuralNet.W[i] = make([][]float64, nodes[i])
 		neuralNet.DW[i] = make([][]float64, nodes[i])
@@ -238,7 +242,7 @@ func (neuNet *NeuralNet) Train(trainImg, trainLabel *os.File, sizeMiniBatch, rep
 			}
 		}
 		tempErr := optimizer(trainInput, trainLabelOneHot)
-		fmt.Printf("%d-th run ended. Error=%f\n", try, tempErr)
+		//		fmt.Printf("%d-th run ended. Error=%f\n", try, tempErr)
 		errHist = append(errHist, tempErr)
 	}
 	return
@@ -246,7 +250,7 @@ func (neuNet *NeuralNet) Train(trainImg, trainLabel *os.File, sizeMiniBatch, rep
 }
 
 //Test performs test
-func (neuNet NeuralNet) Test(testImg, testLabel *os.File, repet int) (accuracyPct float64) {
+func (neuNet NeuralNet) Test(testImg, testLabel *os.File, repet int) (accuracyPct float64, errdata [][]int) {
 
 	layerOutput := len(neuNet.Output) - 1
 	searchMax := func(vec linearalgebra.Colvec) (idxMax int) {
@@ -288,7 +292,8 @@ func (neuNet NeuralNet) Test(testImg, testLabel *os.File, repet int) (accuracyPc
 			ok++
 		} else {
 			nok++
-			fmt.Printf("Not OK: %d, corr:%d, inf: %d\n", id, pickedLabel, infLabel)
+			errdata = append(errdata, []int{id, pickedLabel, infLabel})
+			//			fmt.Printf("Not OK: %d, corr:%d, inf: %d\n", id, pickedLabel, infLabel)
 		}
 	}
 
