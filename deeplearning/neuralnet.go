@@ -2,7 +2,7 @@ package deeplearning
 
 import (
 	"PainTheMaster/mybraly/deeplearning/mnist"
-	"PainTheMaster/mybraly/math/linearalgebra"
+	"PainTheMaster/mybraly/mymath/linearalgebra"
 	"fmt"
 	"math"
 	"math/rand"

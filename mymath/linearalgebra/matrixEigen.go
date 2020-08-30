@@ -1,7 +1,7 @@
 package linearalgebra
 
 import (
-	helper "PainTheMaster/mybraly/math/linearalgebra/matrixEigen"
+	helper "PainTheMaster/mybraly/mymath/linearalgebra/matrixEigen"
 	"math"
 )
 

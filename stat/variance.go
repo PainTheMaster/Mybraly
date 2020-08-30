@@ -29,7 +29,7 @@ func StdevSamp(data []float64) (stdev float64) {
 	return
 }
 
-//VarianceSamp Table calculates variance of the data in the table in all dimensions.
+//VarianceSampTable calculates variance of the data in the table in all dimensions.
 func VarianceSampTable(data [][]float64) (variance []float64) {
 	rows := len(data)
 	cols := len(data[0])

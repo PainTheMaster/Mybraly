@@ -1,7 +1,7 @@
 package stat
 
 import (
-	"PainTheMaster/mybraly/math/specialfunc"
+	"PainTheMaster/mybraly/mymath/specialfunc"
 	"math"
 )
 

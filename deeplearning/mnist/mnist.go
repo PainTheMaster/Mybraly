@@ -1,7 +1,7 @@
 package mnist
 
 import (
-	"PainTheMaster/mybraly/math/linearalgebra"
+	"PainTheMaster/mybraly/mymath/linearalgebra"
 	"image"
 	"image/color"
 	"image/png"

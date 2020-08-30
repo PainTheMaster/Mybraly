@@ -1,7 +1,7 @@
 package stat
 
 import (
-	"PainTheMaster/mybraly/math/linearalgebra"
+	"PainTheMaster/mybraly/mymath/linearalgebra"
 	"math"
 )
 

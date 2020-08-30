@@ -1,7 +1,7 @@
 package linearalgebra
 
 import (
-	helper "PainTheMaster/mybraly/math/linearalgebra/matrixDecomp"
+	helper "PainTheMaster/mybraly/mymath/linearalgebra/matrixDecomp"
 	"math"
 )
 
