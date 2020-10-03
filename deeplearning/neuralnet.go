@@ -302,3 +302,4 @@ func (neuNet NeuralNet) Test(testImg, testLabel *os.File, repet int) (accuracyPc
 	return
 
 }
+

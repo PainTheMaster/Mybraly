@@ -2,6 +2,9 @@ package mass
 
 import (
 	"PainTheMaster/mybraly/order"
+	"PainTheMaster/mybraly/table"
+	"fmt"
+	"os"
 )
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -380,4 +383,48 @@ func (clusts Clusters) Swap(i int, j int) {
 //Length returns the length of the clusters
 func (clusts Clusters) Length() int {
 	return len(clusts)
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////    Read TSV   /////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+//ReadTSV reads tab separated values of mass and intensity.
+func ReadTSV(file *os.File) (massspec Peaks) {
+	matrix := table.ReadTableFloat(file, '\t')
+	cols := len(matrix[0])
+	rows := len(matrix)
+
+	if cols != 2 {
+		fmt.Println("mass.ReadTSV error: column number of the table not 2")
+	}
+	massspec = make(Peaks, rows)
+	for i := 0; i <= rows-1; i++ {
+		massspec[i].MPerZ = matrix[i][0]
+		massspec[i].Intens = matrix[i][1]
+		massspec[i].ID = i
+	}
+	return
+}
+
+//InsertZero double the resolution of peaks Peaks and insert zero
+func (pks *Peaks) InsertZero() {
+	length := pks.Length()
+	temp := make(Peaks, length*2-1)
+	for i := 0; i <= length-2; i++ {
+		temp[i*2].MPerZ = (*pks)[i].MPerZ
+		temp[i*2].Intens = (*pks)[i].Intens
+		temp[i*2].ID = i * 2
+
+		temp[i*2+1].MPerZ = ((*pks)[i].MPerZ + (*pks)[i+1].MPerZ) / 2.0
+		temp[i*2+1].Intens = 0.0
+		temp[i*2+1].ID = i*2 + 1
+	}
+	{
+		i := length - 1
+		temp[i*2].MPerZ = (*pks)[i].MPerZ
+		temp[i*2].Intens = (*pks)[i].Intens
+		temp[i*2].ID = i * 2
+	}
+	*pks = temp
 }

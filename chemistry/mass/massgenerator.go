@@ -69,21 +69,21 @@ const (
 
 //ModelSpecies is a struct to define a species that appears on the spectrum.
 type ModelSpecies struct {
-	IntensSpcs  float64
-	MonoIsoMass float64
-	NumIstope   float64
-	IsotopRatio float64
-	IntensChg   []float64
+	IntensSpcs  float64   //Intensity of the spieces.
+	MonoIsoMass float64   //MonoIsotopic mass. Zero charge.
+	NumIstope   float64   //Number of isotopes. "n" in binomial distribution.
+	IsotopRatio float64   //ratio of heavier isottope. "p" in binomial distribution.
+	IntensChg   []float64 //intensities of each charges.
 }
 
 //ModelSpectr is a set of parameters to generate a spectrum and the spectrum itself
 type ModelSpectr struct {
-	Resolution  float64
-	Sigma       float64
-	PeakWidth   float64
-	CutOffRatio float64
-	Species     []ModelSpecies
-	Spectr      []float64
+	Resolution  float64        //interval between data points
+	Sigma       float64        //sigma of bell curb beaks
+	PeakWidth   float64        //sigma * peakWidth is the calculation range of each peak.
+	CutOffRatio float64        //peaks weaker than this is not calculated
+	Species     []ModelSpecies //Slice of contributing species.
+	Spectr      []float64      //resulting mass spectra.
 }
 
 //GenerSpectr generates a spectrum
@@ -99,6 +99,7 @@ func (modelSpectr *ModelSpectr) GenerSpectr() {
 	modelSpectr.Spectr = spectr
 }
 
+//integrate combines peaks of multiple charges.
 func integrate(a []float64, offset int, b []float64) (ans []float64) {
 	origLen := len(a)
 	requLen := offset + len(b)
@@ -121,6 +122,7 @@ func integrate(a []float64, offset int, b []float64) (ans []float64) {
 	return
 }
 
+//partialSpec calculates contribution of one ModelSpecies modelSpc with designated charge chg.
 func (modelSpectr ModelSpectr) partialSpec(modelSpc ModelSpecies, chg int) (offset int, spec []float64) {
 	intensSpcs := modelSpc.IntensSpcs
 	intensChg := modelSpc.IntensChg[chg]
@@ -161,6 +163,7 @@ func (modelSpectr ModelSpectr) partialSpec(modelSpc ModelSpecies, chg int) (offs
 	return
 }
 
+//rangeFinder calculates the number of peaks of an instance of ModelSpecies ms as per cut-off ratio
 func rangeFinder(ms ModelSpecies, cutOffRatio float64) (numPks int) {
 	n64 := ms.NumIstope
 	nInt := int(n64)

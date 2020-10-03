@@ -86,7 +86,7 @@ func ReadTableFloat(reader io.Reader, delim byte) (matrix [][]float64) {
 		}
 		if currentLine%bufLenMat == bufLenMat-1 {
 			bufExpand := make([][]float64, bufLenMat)
-			for i := range matrix {
+			for i := range bufExpand {
 				bufExpand[i] = make([]float64, cols)
 			}
 			matrix = append(matrix, bufExpand...)
