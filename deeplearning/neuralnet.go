@@ -3,6 +3,7 @@ package deeplearning
 import (
 	"PainTheMaster/mybraly/deeplearning/mnist"
 	"PainTheMaster/mybraly/mymath/linearalgebra"
+	"encoding/gob"
 	"fmt"
 	"math"
 	"math/rand"
@@ -12,9 +13,15 @@ import (
 //NeuralNet is a neural network composed of a weight matrix "W", bias vector "B",
 //activation function for hdden layers "ActivFuncHidden", activation function for out-put layer "ActivFuncOut".
 type NeuralNet struct {
-	W     [][][]float64
-	DW    [][][]float64
-	DiffW [][][]float64
+	W         [][][]float64
+	DW        [][][]float64
+	DiffW     [][][]float64
+	DropRatio []linearalgebra.Colvec
+
+	//These parameters are needed to store and restore the neuralnetwork
+	Nodes            []int
+	StrActFuncHidden []string
+	StrActFuncOut    string
 
 	ActFuncHidden []ActFuncHiddenSet
 	ActivFuncOut  ActFuncOutputSet
@@ -72,6 +79,8 @@ type NeuralNet struct {
 		ExpMvAvPri [][][]float64
 		ExpMvAvSec [][][]float64
 	}
+
+	WeightDecayCoeff float64
 }
 
 //Make makes a new empty nerral network "neuralNet". "nodes" represents the number of nodes in each layer
@@ -81,6 +90,7 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	neuralNet.W = make([][][]float64, layers)
 	neuralNet.DW = make([][][]float64, layers)
 	neuralNet.DiffW = make([][][]float64, layers)
+	neuralNet.DropRatio = make([]linearalgebra.Colvec, layers)
 	neuralNet.ParamMomentum.moment = make([][][]float64, layers)
 	neuralNet.ParamAdaGrad.SqSum = make([][][]float64, layers)
 	neuralNet.ParamRMSProp.ExpMvAv = make([][][]float64, layers)
@@ -92,14 +102,11 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	neuralNet.Midval = make([]linearalgebra.Colvec, layers)
 	neuralNet.Output = make([]linearalgebra.Colvec, layers)
 
-	//	neuralNet.W[0] = [][]float64{{0}, {0}}
-	//	neuralNet.DW[0] = [][]float64{{0}, {0}}
-	//	neuralNet.DiffW[0] = [][]float64{{0}, {0}}
-
 	for i := 1; i <= layers-1; i++ {
 		neuralNet.W[i] = make([][]float64, nodes[i])
 		neuralNet.DW[i] = make([][]float64, nodes[i])
 		neuralNet.DiffW[i] = make([][]float64, nodes[i])
+		neuralNet.DropRatio[i] = make(linearalgebra.Colvec, nodes[i])
 		neuralNet.ParamMomentum.moment[i] = make([][]float64, nodes[i])
 		neuralNet.ParamAdaGrad.SqSum[i] = make([][]float64, nodes[i])
 		neuralNet.ParamRMSProp.ExpMvAv[i] = make([][]float64, nodes[i])
@@ -108,7 +115,7 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 		neuralNet.ParamAdam.ExpMvAvPri[i] = make([][]float64, nodes[i])
 		neuralNet.ParamAdam.ExpMvAvSec[i] = make([][]float64, nodes[i])
 		for j := range neuralNet.W[i] {
-			neuralNet.W[i][j] = make([]float64, nodes[i-1]+1) //The last (nodes[i-1]-th) column is bias
+			neuralNet.W[i][j] = make([]float64, nodes[i-1]+1) //The last column (nodes[i-1]-th) is bias
 			neuralNet.DW[i][j] = make([]float64, nodes[i-1]+1)
 			neuralNet.DiffW[i][j] = make([]float64, nodes[i-1]+1)
 			neuralNet.ParamMomentum.moment[i][j] = make([]float64, nodes[i-1]+1)
@@ -121,7 +128,7 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 		}
 
 		neuralNet.Midval[i] = make(linearalgebra.Colvec, nodes[i])
-		neuralNet.Output[i] = make(linearalgebra.Colvec, nodes[i]+1)
+		neuralNet.Output[i] = make(linearalgebra.Colvec, nodes[i]+1) //The last elemenn is for the bias in the next layer
 		neuralNet.Output[i][nodes[i]] = 1.0
 	}
 
@@ -136,16 +143,18 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	}
 	neuralNet.ActivFuncOut = actFuncOut[strActFuncOut]
 
-	//TODO: please implement initialization of W by using appropriate distribution.
 	var seed int64 = 100
 	randSource := rand.NewSource(seed)
 	newRand := rand.New(randSource)
 	randAve := 0.00
+	smallPosBias := 0.01
 	for l := 1; l <= layers-2; l++ {
 		for node := range neuralNet.W[l] {
 			numBranch := len(neuralNet.W[l][0])
 			randStdev := neuralNet.ActFuncHidden[l].StdevWtFunc(numBranch)
-			for br := range neuralNet.W[l][node] {
+			br := 0
+			neuralNet.W[l][node][br] = smallPosBias
+			for br = 1; br <= len(neuralNet.W[l][node])-1; br++ {
 				neuralNet.W[l][node][br] = newRand.NormFloat64()*randStdev + randAve
 			}
 		}
@@ -155,13 +164,19 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 		for node := range neuralNet.W[l] {
 			numBranch := len(neuralNet.W[l][0])
 			randStdev := neuralNet.ActivFuncOut.StdevWtFunc(numBranch)
-			for br := range neuralNet.W[l][node] {
+			br := 0
+			neuralNet.W[l][node][br] = smallPosBias
+			for br = 1; br <= len(neuralNet.W[l][node])-1; br++ {
 				neuralNet.W[l][node][br] = newRand.NormFloat64()*randStdev + randAve
 			}
 		}
 	}
 
 	neuralNet.ParamAdaGrad.Rep = 0
+
+	neuralNet.Nodes = nodes
+	neuralNet.StrActFuncHidden = strActFuncHidden
+	neuralNet.StrActFuncOut = strActFuncOut
 
 	return
 }
@@ -172,13 +187,18 @@ func (neuNet *NeuralNet) Forward(input linearalgebra.Colvec) {
 		fmt.Println("deeplearing.Forward() error: input vector mismatch.")
 	}
 
+	for i := range neuNet.Output[0] {
+		neuNet.Output[0][i] *= 1.0 - neuNet.DropRatio[0][i]
+	}
 	neuNet.Output[0] = append(input, 1.0)
 
 	for layer := 1; layer <= len(neuNet.W)-2; layer++ {
 		neuNet.Midval[layer] = linearalgebra.MatColvecMult(neuNet.W[layer], neuNet.Output[layer-1])
 
 		neuNet.Output[layer] = neuNet.ActFuncHidden[layer].Forward(neuNet.Midval[layer])
-
+		for i := range neuNet.Output[layer] {
+			neuNet.Output[layer][i] *= 1.0 - neuNet.DropRatio[layer][i]
+		}
 		neuNet.Output[layer] = append(neuNet.Output[layer], 1.0)
 	}
 
@@ -201,8 +221,60 @@ func (neuNet NeuralNet) Error(input linearalgebra.Colvec, correct linearalgebra.
 	return
 }
 
-//Train trains the neural network.
-func (neuNet *NeuralNet) Train(trainImg, trainLabel *os.File, sizeMiniBatch, repet int, labelOptim string) (errHist []float64) {
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////// General purpose functions /////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//GeneralTraining is a function for traiing with general data form.
+func (neuNet *NeuralNet) GeneralTraining(trainInput, trainOutput []linearalgebra.Colvec, sizeMiniBatch, repet int, labelOptim string) (errHist []float64) {
+	var optimizer func(input, correct []linearalgebra.Colvec) (err float64)
+	switch labelOptim {
+	case LabelGradDec:
+		optimizer = neuNet.GradDescent
+	case LabelAdaGrad:
+		optimizer = neuNet.AdaGrad
+	case LabelMomentum:
+		optimizer = neuNet.Momentum
+	case LabelRMSProp:
+		optimizer = neuNet.RMSProp
+	case LabelAdaDelta:
+		optimizer = neuNet.AdaDelta
+	case LabelAdam:
+		optimizer = neuNet.Adam
+	}
+
+	numData := len(trainInput)
+
+	randSeed := int64(100)
+	randSource := rand.NewSource(randSeed)
+	randGener := rand.New(randSource)
+
+	for try := 1; try <= repet; try++ {
+		var miniBatchInput, miniBatchOutput []linearalgebra.Colvec
+		picked := make([]bool, numData)
+		for sample := 0; sample <= sizeMiniBatch-1; sample++ {
+			for {
+				id := randGener.Intn(numData) //this returns a randdum int from 0 to (numImgs-1)
+				if !picked[id] {
+					picked[id] = true
+					miniBatchInput = append(miniBatchInput, trainInput[id])
+					miniBatchOutput = append(miniBatchOutput, trainOutput[id])
+					break
+				}
+			}
+		}
+		tempErr := optimizer(miniBatchInput, miniBatchOutput)
+		errHist = append(errHist, tempErr)
+	}
+	return
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////// MNIST related functions /////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+//MnistTrain trains the neural network.
+func (neuNet *NeuralNet) MnistTrain(trainImg, trainLabel *os.File, sizeMiniBatch, repet int, labelOptim string) (errHist []float64) {
 	var optimizer func(input, correct []linearalgebra.Colvec) (err float64)
 	switch labelOptim {
 	case LabelGradDec:
@@ -249,8 +321,8 @@ func (neuNet *NeuralNet) Train(trainImg, trainLabel *os.File, sizeMiniBatch, rep
 
 }
 
-//Test performs test
-func (neuNet NeuralNet) Test(testImg, testLabel *os.File, repet int) (accuracyPct float64, errdata [][]int) {
+//MnistTest performs test
+func (neuNet NeuralNet) MnistTest(testImg, testLabel *os.File, repet int) (accuracyPct float64, errdata [][]int) {
 
 	layerOutput := len(neuNet.Output) - 1
 	searchMax := func(vec linearalgebra.Colvec) (idxMax int) {
@@ -303,3 +375,109 @@ func (neuNet NeuralNet) Test(testImg, testLabel *os.File, repet int) (accuracyPc
 
 }
 
+/////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////    Store and restore    //////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
+type storeStruc struct {
+	W                [][][]float64
+	DW               [][][]float64
+	DiffW            [][][]float64
+	DropRatio        []linearalgebra.Colvec
+	Nodes            []int
+	StrActFuncHidden []string
+	StrActFuncOut    string
+	ParamGradDecent  struct{ LearnRate float64 }
+	ParamMomentum    struct {
+		LearnRate  float64
+		MomentRate float64
+		moment     [][][]float64
+	}
+	ParamAdaGrad struct {
+		LearnRate float64
+		Rep       int
+		SqSum     [][][]float64
+	}
+	ParamRMSProp struct {
+		LearnRate float64
+		DecayRate float64
+		Rep       int
+		ExpMvAv   [][][]float64
+	}
+
+	ParamAdaDelta struct {
+		DecayRate   float64
+		Rep         int
+		ExpMvAvDW   [][][]float64
+		ExpMvAvGrad [][][]float64
+	}
+	ParamAdam struct {
+		LearnRate  float64
+		DecayRate1 float64
+		DecayRate2 float64
+		Rep        int
+		ExpMvAvPri [][][]float64
+		ExpMvAvSec [][][]float64
+	}
+	WeightDecayCoeff float64
+}
+
+//Store stores current neuralnetwork to a file designated by the fileName
+func (neuNet NeuralNet) Store(fileName string) {
+
+	ss := storeStruc{
+		W:                neuNet.W,
+		DW:               neuNet.DW,
+		DiffW:            neuNet.DiffW,
+		DropRatio:        neuNet.DropRatio,
+		Nodes:            neuNet.Nodes,
+		StrActFuncHidden: neuNet.StrActFuncHidden,
+		StrActFuncOut:    neuNet.StrActFuncOut,
+		ParamAdaGrad:     neuNet.ParamAdaGrad,
+		ParamRMSProp:     neuNet.ParamRMSProp,
+		ParamAdaDelta:    neuNet.ParamAdaDelta,
+		ParamAdam:        neuNet.ParamAdam,
+		WeightDecayCoeff: neuNet.WeightDecayCoeff,
+	}
+
+	file, err := os.Create(fileName)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	gobEncoder := gob.NewEncoder(file)
+	err = gobEncoder.Encode(ss)
+	if err != nil {
+		fmt.Println(err)
+	}
+	file.Close()
+}
+
+//Restore restoress a neuralnetwork from a designated file
+func Restore(fileName string) (neuNet NeuralNet) {
+	var ss storeStruc
+
+	file, err := os.Open(fileName)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	gobDecoder := gob.NewDecoder(file)
+	err = gobDecoder.Decode(ss)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	neuNet = Make(ss.Nodes, ss.StrActFuncHidden, ss.StrActFuncOut)
+	neuNet.W = ss.W
+	neuNet.DW = ss.DW
+	neuNet.DiffW = ss.DiffW
+	neuNet.DropRatio = ss.DropRatio
+	neuNet.Nodes = ss.Nodes
+	neuNet.ParamAdaGrad = ss.ParamAdaGrad
+	neuNet.ParamRMSProp = ss.ParamRMSProp
+	neuNet.ParamAdaDelta = ss.ParamAdaDelta
+	neuNet.ParamAdam = ss.ParamAdam
+	neuNet.WeightDecayCoeff = ss.WeightDecayCoeff
+
+	return
+}

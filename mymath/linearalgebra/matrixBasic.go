@@ -116,3 +116,29 @@ func RowvecMatMult(v Rowvec, A [][]float64) (ans Rowvec) {
 	}
 	return
 }
+
+//AmadalProdCol is amadal product of column vectors v1 and v2.
+func AmadalProdCol(v1, v2 Colvec) (prod Colvec) {
+	if len(v1) != len(v2) {
+		fmt.Println("mymath/matrixBasic/AmadalProdCol error: vector size mismatch")
+		return
+	}
+	prod = make(Colvec, len(v1))
+	for i := range v1 {
+		prod[i] = v1[i] * v2[i]
+	}
+	return
+}
+
+//AmadalProdRow is amadal product of column vectors v1 and v2.
+func AmadalProdRow(v1, v2 Rowvec) (prod Rowvec) {
+	if len(v1) != len(v2) {
+		fmt.Println("mymath/matrixBasic/AmadalProdCol error: vector size mismatch")
+		return
+	}
+	prod = make(Rowvec, len(v1))
+	for i := range v1 {
+		prod[i] = v1[i] * v2[i]
+	}
+	return
+}
