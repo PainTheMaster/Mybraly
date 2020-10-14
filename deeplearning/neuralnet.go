@@ -102,6 +102,8 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	neuralNet.Midval = make([]linearalgebra.Colvec, layers)
 	neuralNet.Output = make([]linearalgebra.Colvec, layers)
 
+	neuralNet.DropRatio[0] = make(linearalgebra.Colvec, nodes[0])
+
 	for i := 1; i <= layers-1; i++ {
 		neuralNet.W[i] = make([][]float64, nodes[i])
 		neuralNet.DW[i] = make([][]float64, nodes[i])
@@ -187,16 +189,16 @@ func (neuNet *NeuralNet) Forward(input linearalgebra.Colvec) {
 		fmt.Println("deeplearing.Forward() error: input vector mismatch.")
 	}
 
-	for i := range neuNet.Output[0] {
-		neuNet.Output[0][i] *= 1.0 - neuNet.DropRatio[0][i]
-	}
 	neuNet.Output[0] = append(input, 1.0)
+	for i := range neuNet.DropRatio[0] {
+		neuNet.Output[0][i] *= (1.0 - neuNet.DropRatio[0][i])
+	}
 
 	for layer := 1; layer <= len(neuNet.W)-2; layer++ {
 		neuNet.Midval[layer] = linearalgebra.MatColvecMult(neuNet.W[layer], neuNet.Output[layer-1])
 
 		neuNet.Output[layer] = neuNet.ActFuncHidden[layer].Forward(neuNet.Midval[layer])
-		for i := range neuNet.Output[layer] {
+		for i := range neuNet.DropRatio[layer] {
 			neuNet.Output[layer][i] *= 1.0 - neuNet.DropRatio[layer][i]
 		}
 		neuNet.Output[layer] = append(neuNet.Output[layer], 1.0)
@@ -229,7 +231,7 @@ func (neuNet NeuralNet) Error(input linearalgebra.Colvec, correct linearalgebra.
 func (neuNet *NeuralNet) GeneralTraining(trainInput, trainOutput []linearalgebra.Colvec, sizeMiniBatch, repet int, labelOptim string) (errHist []float64) {
 	var optimizer func(input, correct []linearalgebra.Colvec) (err float64)
 	switch labelOptim {
-	case LabelGradDec:
+	case LabelGradDesc:
 		optimizer = neuNet.GradDescent
 	case LabelAdaGrad:
 		optimizer = neuNet.AdaGrad
@@ -241,6 +243,16 @@ func (neuNet *NeuralNet) GeneralTraining(trainInput, trainOutput []linearalgebra
 		optimizer = neuNet.AdaDelta
 	case LabelAdam:
 		optimizer = neuNet.Adam
+	case LabelGradDescWD:
+		optimizer = neuNet.GradDescentWeightDecay
+	case LabelAdaGradWD:
+		optimizer = neuNet.AdaGradWeightDecay
+	case LabelMomentumWD:
+		optimizer = neuNet.MomentumWeightDecay
+	case LabelRMSPropWD:
+		optimizer = neuNet.RMSPropWeightDecay
+	case LabelAdaDeltaWD:
+		optimizer = neuNet.AdaDeltaWeightDecay
 	}
 
 	numData := len(trainInput)
@@ -277,7 +289,7 @@ func (neuNet *NeuralNet) GeneralTraining(trainInput, trainOutput []linearalgebra
 func (neuNet *NeuralNet) MnistTrain(trainImg, trainLabel *os.File, sizeMiniBatch, repet int, labelOptim string) (errHist []float64) {
 	var optimizer func(input, correct []linearalgebra.Colvec) (err float64)
 	switch labelOptim {
-	case LabelGradDec:
+	case LabelGradDesc:
 		optimizer = neuNet.GradDescent
 	case LabelAdaGrad:
 		optimizer = neuNet.AdaGrad
@@ -289,6 +301,16 @@ func (neuNet *NeuralNet) MnistTrain(trainImg, trainLabel *os.File, sizeMiniBatch
 		optimizer = neuNet.AdaDelta
 	case LabelAdam:
 		optimizer = neuNet.Adam
+	case LabelGradDescWD:
+		optimizer = neuNet.GradDescentWeightDecay
+	case LabelAdaGradWD:
+		optimizer = neuNet.AdaGradWeightDecay
+	case LabelMomentumWD:
+		optimizer = neuNet.MomentumWeightDecay
+	case LabelRMSPropWD:
+		optimizer = neuNet.RMSPropWeightDecay
+	case LabelAdaDeltaWD:
+		optimizer = neuNet.AdaDeltaWeightDecay
 	}
 
 	trainInput := make([]linearalgebra.Colvec, sizeMiniBatch)
