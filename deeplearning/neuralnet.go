@@ -13,22 +13,30 @@ import (
 //NeuralNet is a neural network composed of a weight matrix "W", bias vector "B",
 //activation function for hdden layers "ActivFuncHidden", activation function for out-put layer "ActivFuncOut".
 type NeuralNet struct {
-	W         [][][]float64
-	DW        [][][]float64
-	DiffW     [][][]float64
-	DropRatio []linearalgebra.Colvec
-
-	//These parameters are needed to store and restore the neuralnetwork
+	//Basic Structure parameters. These parameters are needed to store and restore the neuralnetwork
 	Nodes            []int
 	StrActFuncHidden []string
 	StrActFuncOut    string
 
+	//Weight and intermediate values for optimization.
+	W     [][][]float64          //Weight
+	Delta []linearalgebra.Colvec //Delta needed to calucate differential in back propagation
+	DiffW [][][]float64          //differential of error in terms of W
+	DW    [][][]float64          //correction of W
+
+	//Drop out related parameters and intermediate values.
+	DropRatio [][]float64
+	DropFlag  [][]bool               //True=> drop that cell. False=> don't drop it.
+	NumDrop   [][][]int              //the number of dropping that cell experienced.
+	NumTrial  int                    //Total number of trial with drop out.
+	Mask      []linearalgebra.Colvec //For two purpose
+
+	//Weight decay related parameters
+	WeightDecayCoeff float64
+
+	//Activation functions
 	ActFuncHidden []ActFuncHiddenSet
 	ActivFuncOut  ActFuncOutputSet
-
-	Midval []linearalgebra.Colvec
-	Output []linearalgebra.Colvec
-	Delta  []linearalgebra.Colvec
 
 	ParamGradDecent struct {
 		//Hyper parameters
@@ -80,7 +88,9 @@ type NeuralNet struct {
 		ExpMvAvSec [][][]float64
 	}
 
-	WeightDecayCoeff float64
+	//Output and values needed to calculate it.
+	Midval []linearalgebra.Colvec //u: values to be processed by activation function
+	Output []linearalgebra.Colvec //z: values processed by activation function
 }
 
 //Make makes a new empty nerral network "neuralNet". "nodes" represents the number of nodes in each layer
@@ -90,7 +100,7 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	neuralNet.W = make([][][]float64, layers)
 	neuralNet.DW = make([][][]float64, layers)
 	neuralNet.DiffW = make([][][]float64, layers)
-	neuralNet.DropRatio = make([]linearalgebra.Colvec, layers)
+	neuralNet.Mask = make([]linearalgebra.Colvec, layers)
 	neuralNet.ParamMomentum.moment = make([][][]float64, layers)
 	neuralNet.ParamAdaGrad.SqSum = make([][][]float64, layers)
 	neuralNet.ParamRMSProp.ExpMvAv = make([][][]float64, layers)
@@ -102,13 +112,13 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	neuralNet.Midval = make([]linearalgebra.Colvec, layers)
 	neuralNet.Output = make([]linearalgebra.Colvec, layers)
 
-	neuralNet.DropRatio[0] = make(linearalgebra.Colvec, nodes[0])
+	neuralNet.Mask[0] = make(linearalgebra.Colvec, nodes[0])
 
 	for i := 1; i <= layers-1; i++ {
 		neuralNet.W[i] = make([][]float64, nodes[i])
 		neuralNet.DW[i] = make([][]float64, nodes[i])
 		neuralNet.DiffW[i] = make([][]float64, nodes[i])
-		neuralNet.DropRatio[i] = make(linearalgebra.Colvec, nodes[i])
+		neuralNet.Mask[i] = make(linearalgebra.Colvec, nodes[i])
 		neuralNet.ParamMomentum.moment[i] = make([][]float64, nodes[i])
 		neuralNet.ParamAdaGrad.SqSum[i] = make([][]float64, nodes[i])
 		neuralNet.ParamRMSProp.ExpMvAv[i] = make([][]float64, nodes[i])
@@ -176,6 +186,12 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 
 	neuralNet.ParamAdaGrad.Rep = 0
 
+	for layer := range neuralNet.Mask {
+		for j := range neuralNet.Mask[layer] {
+			neuralNet.Mask[layer][j] = 1.0
+		}
+	}
+
 	neuralNet.Nodes = nodes
 	neuralNet.StrActFuncHidden = strActFuncHidden
 	neuralNet.StrActFuncOut = strActFuncOut
@@ -189,17 +205,16 @@ func (neuNet *NeuralNet) Forward(input linearalgebra.Colvec) {
 		fmt.Println("deeplearing.Forward() error: input vector mismatch.")
 	}
 
-	neuNet.Output[0] = append(input, 1.0)
-	for i := range neuNet.DropRatio[0] {
-		neuNet.Output[0][i] *= (1.0 - neuNet.DropRatio[0][i])
+	for i := 0; i <= len(neuNet.Mask[0])-2; i++ {
+		neuNet.Output[0][i] = input[i] * neuNet.Mask[0][i]
 	}
 
 	for layer := 1; layer <= len(neuNet.W)-2; layer++ {
 		neuNet.Midval[layer] = linearalgebra.MatColvecMult(neuNet.W[layer], neuNet.Output[layer-1])
 
 		neuNet.Output[layer] = neuNet.ActFuncHidden[layer].Forward(neuNet.Midval[layer])
-		for i := range neuNet.DropRatio[layer] {
-			neuNet.Output[layer][i] *= 1.0 - neuNet.DropRatio[layer][i]
+		for i := range neuNet.Output[layer] {
+			neuNet.Output[layer][i] *= neuNet.Mask[layer][i]
 		}
 		neuNet.Output[layer] = append(neuNet.Output[layer], 1.0)
 	}
@@ -210,6 +225,59 @@ func (neuNet *NeuralNet) Forward(input linearalgebra.Colvec) {
 		neuNet.Output[layer] = neuNet.ActivFuncOut.Forward(neuNet.Midval[layer])
 	}
 
+	return
+}
+
+//ForwardDrop performs forward dropping with reduced calculation load.
+func (neuNet *NeuralNet) ForwardDrop(input linearalgebra.Colvec) {
+	if len(neuNet.W[1][0]) != len(input)+1 {
+		fmt.Println("deeplearing.Forward() error: input vector mismatch.")
+	}
+
+	//	for i := 0; i <= len(neuNet.Mask[0])-2; i++ {
+	for i := 0; i <= neuNet.Nodes[0]-1; i++ {
+		if neuNet.DropFlag[0][i] {
+			neuNet.Output[0][i] = 0.0
+		} else {
+			neuNet.Output[0][i] = input[i]
+		}
+	}
+
+	for layer := 1; layer <= len(neuNet.W)-2; layer++ {
+		neuNet.Midval[layer] = make(linearalgebra.Colvec, neuNet.Nodes[layer])
+		for i := 0; i <= neuNet.Nodes[layer]-1; i++ {
+			if neuNet.DropFlag[layer][i] {
+				//				neuNet.Midval[layer][i] = 0.0	 Just to show the intention. The mid value is useless in this case.
+			} else {
+				neuNet.Midval[layer][i] = helperVecInnerProd(neuNet.W[layer][i], neuNet.Output[layer-1])
+			}
+		}
+		neuNet.Output[layer] = neuNet.ActFuncHidden[layer].Forward(neuNet.Midval[layer])
+
+		for i := range neuNet.Output[layer] {
+			if neuNet.DropFlag[layer][i] {
+				neuNet.Output[layer][i] = 0.0
+			}
+		}
+		neuNet.Output[layer] = append(neuNet.Output[layer], 1.0)
+	}
+
+	{
+		layer := len(neuNet.W) - 1
+		neuNet.Midval[layer] = linearalgebra.MatColvecMult(neuNet.W[layer], neuNet.Output[layer-1])
+		neuNet.Output[layer] = neuNet.ActivFuncOut.Forward(neuNet.Midval[layer])
+	}
+
+	return
+}
+
+func helperVecInnerProd(v1, v2 []float64) (ans float64) {
+	if len(v1) != len(v2) {
+		fmt.Println("helperVecInnerProd error: v1, v2 dimension mismatch")
+	}
+	for i := range v1 {
+		ans += v1[i] * v2[i]
+	}
 	return
 }
 
@@ -450,7 +518,7 @@ func (neuNet NeuralNet) Store(fileName string) {
 		W:                neuNet.W,
 		DW:               neuNet.DW,
 		DiffW:            neuNet.DiffW,
-		DropRatio:        neuNet.DropRatio,
+		DropRatio:        neuNet.Mask,
 		Nodes:            neuNet.Nodes,
 		StrActFuncHidden: neuNet.StrActFuncHidden,
 		StrActFuncOut:    neuNet.StrActFuncOut,
@@ -493,7 +561,7 @@ func Restore(fileName string) (neuNet NeuralNet) {
 	neuNet.W = ss.W
 	neuNet.DW = ss.DW
 	neuNet.DiffW = ss.DiffW
-	neuNet.DropRatio = ss.DropRatio
+	neuNet.Mask = ss.DropRatio
 	neuNet.Nodes = ss.Nodes
 	neuNet.ParamAdaGrad = ss.ParamAdaGrad
 	neuNet.ParamRMSProp = ss.ParamRMSProp
