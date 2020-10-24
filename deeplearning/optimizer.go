@@ -104,7 +104,7 @@ func (neuNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec) (err
 		}
 	}
 
-	neuNet.NumTrial++
+	neuNet.NumDropoutTrial++
 
 	err = 0.0
 	for data := range input {
@@ -174,10 +174,11 @@ func (neuNet *NeuralNet) AdaGrad(input, correct []linearalgebra.Colvec) (err flo
 				}
 			}
 		}
+
 	}
 
+	neuNet.NumDropoutTrial++
 	neuNet.ParamAdaGrad.Rep++
-	neuNet.NumTrial++
 
 	err = 0.0
 	for data := range input {
@@ -260,9 +261,12 @@ func (neuNet *NeuralNet) Momentum(input, correct []linearalgebra.Colvec) (err fl
 					neuNet.DW[layer][j][i] = 0.0
 					neuNet.ParamMomentum.moment[layer][j][i] = neuNet.DW[layer][j][i]
 				}
+				neuNet.NumDrop[layer][j]++
 			}
 		}
 	}
+
+	neuNet.NumDropoutTrial++
 
 	err = 0.0
 	for data := range input {
@@ -326,20 +330,26 @@ func (neuNet *NeuralNet) RMSProp(input, correct []linearalgebra.Colvec) (err flo
 				}
 			}
 		}
-		neuNet.ParamRMSProp.Rep++
 	} else {
 		neuNet.Differentiate(input, correct)
 		for layer := 1; layer <= len(neuNet.ParamRMSProp.ExpMvAv)-1; layer++ {
 			for j := 0; j <= len(neuNet.ParamRMSProp.ExpMvAv[layer])-1; j++ {
-				for i := 0; i <= len(neuNet.ParamRMSProp.ExpMvAv[layer][j])-1; i++ {
-					neuNet.ParamRMSProp.ExpMvAv[layer][j][i] = DecayRate*neuNet.ParamRMSProp.ExpMvAv[layer][j][i] + (1-DecayRate)*neuNet.DiffW[layer][j][i]*neuNet.DiffW[layer][j][i]
-					neuNet.DW[layer][j][i] = -1.0 * LearnRate * neuNet.DiffW[layer][j][i] / math.Sqrt(neuNet.ParamRMSProp.ExpMvAv[layer][j][i])
-					neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
+				if !neuNet.DropFlag[layer][j] {
+					for i := 0; i <= len(neuNet.ParamRMSProp.ExpMvAv[layer][j])-1; i++ {
+						neuNet.ParamRMSProp.ExpMvAv[layer][j][i] = DecayRate*neuNet.ParamRMSProp.ExpMvAv[layer][j][i] + (1-DecayRate)*neuNet.DiffW[layer][j][i]*neuNet.DiffW[layer][j][i]
+						neuNet.DW[layer][j][i] = -1.0 * LearnRate * neuNet.DiffW[layer][j][i] / math.Sqrt(neuNet.ParamRMSProp.ExpMvAv[layer][j][i])
+						neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
+					}
+				} else {
+					neuNet.NumDrop[layer][j]++
 				}
 			}
 		}
-		neuNet.ParamRMSProp.Rep++
+
 	}
+
+	neuNet.ParamRMSProp.Rep++
+	neuNet.NumDropoutTrial++
 
 	err = 0.0
 	for data := range input {
