@@ -25,11 +25,11 @@ type NeuralNet struct {
 	DW    [][][]float64          //correction of W
 
 	//Drop out related parameters and intermediate values.
-	DropRatio [][]float64            //The ratio in which a node of the layer is dropped.
-	DropFlag  [][]bool               //True=> drop that cell. False=> don't drop it.
-	NumDrop   [][]int                //the number of dropping that cell experienced.
-	NumTrial  int                    //Total number of trial with drop out.
-	Mask      []linearalgebra.Colvec //For two purpose
+	DropRatio       [][]float64            //The ratio in which a node of the layer is dropped.
+	DropFlag        [][]bool               //True=> drop that cell. False=> don't drop it.
+	NumDrop         [][]int                //the number of dropping that cell experienced.
+	NumDropoutTrial int                    //Total number of trial with drop out.
+	Mask            []linearalgebra.Colvec //For two purpose
 
 	//Weight decay related parameters
 	WeightDecayCoeff float64
@@ -45,8 +45,8 @@ type NeuralNet struct {
 
 	ParamMomentum struct {
 		//Hyer parameters
-		LearnRate  float64
-		MomentRate float64
+		LearnRate   float64
+		MomentRatio float64
 		//Working parameters
 		moment [][][]float64
 	}
@@ -84,6 +84,7 @@ type NeuralNet struct {
 		DecayRate2 float64
 		//Working parameters
 		Rep        int
+		NumDrop    [][][]int
 		ExpMvAvPri [][][]float64
 		ExpMvAvSec [][][]float64
 	}
@@ -109,6 +110,7 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	neuralNet.ParamRMSProp.ExpMvAv = make([][][]float64, layers)
 	neuralNet.ParamAdaDelta.ExpMvAvDW = make([][][]float64, layers)
 	neuralNet.ParamAdaDelta.ExpMvAvGrad = make([][][]float64, layers)
+	neuralNet.ParamAdam.NumDrop = make([][][]int, layers)
 	neuralNet.ParamAdam.ExpMvAvPri = make([][][]float64, layers)
 	neuralNet.ParamAdam.ExpMvAvSec = make([][][]float64, layers)
 
@@ -130,6 +132,7 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 		neuralNet.ParamRMSProp.ExpMvAv[i] = make([][]float64, nodes[i])
 		neuralNet.ParamAdaDelta.ExpMvAvDW[i] = make([][]float64, nodes[i])
 		neuralNet.ParamAdaDelta.ExpMvAvGrad[i] = make([][]float64, nodes[i])
+		neuralNet.ParamAdam.NumDrop[i] = make([][]int, nodes[i])
 		neuralNet.ParamAdam.ExpMvAvPri[i] = make([][]float64, nodes[i])
 		neuralNet.ParamAdam.ExpMvAvSec[i] = make([][]float64, nodes[i])
 		for j := range neuralNet.W[i] {
@@ -141,6 +144,7 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 			neuralNet.ParamRMSProp.ExpMvAv[i][j] = make([]float64, nodes[i-1]+1)
 			neuralNet.ParamAdaDelta.ExpMvAvDW[i][j] = make([]float64, nodes[i-1]+1)
 			neuralNet.ParamAdaDelta.ExpMvAvGrad[i][j] = make([]float64, nodes[i-1]+1)
+			neuralNet.ParamAdam.NumDrop[i][j] = make([]int, nodes[i-1]+1)
 			neuralNet.ParamAdam.ExpMvAvPri[i][j] = make([]float64, nodes[i-1]+1)
 			neuralNet.ParamAdam.ExpMvAvSec[i][j] = make([]float64, nodes[i-1]+1)
 		}
@@ -511,6 +515,7 @@ type storeStruc struct {
 		DecayRate1 float64
 		DecayRate2 float64
 		Rep        int
+		NumDrop    [][][]int
 		ExpMvAvPri [][][]float64
 		ExpMvAvSec [][][]float64
 	}
