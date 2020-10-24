@@ -25,9 +25,9 @@ type NeuralNet struct {
 	DW    [][][]float64          //correction of W
 
 	//Drop out related parameters and intermediate values.
-	DropRatio [][]float64
+	DropRatio [][]float64            //The ratio in which a node of the layer is dropped.
 	DropFlag  [][]bool               //True=> drop that cell. False=> don't drop it.
-	NumDrop   [][][]int              //the number of dropping that cell experienced.
+	NumDrop   [][]int                //the number of dropping that cell experienced.
 	NumTrial  int                    //Total number of trial with drop out.
 	Mask      []linearalgebra.Colvec //For two purpose
 
@@ -100,6 +100,9 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 	neuralNet.W = make([][][]float64, layers)
 	neuralNet.DW = make([][][]float64, layers)
 	neuralNet.DiffW = make([][][]float64, layers)
+	neuralNet.DropRatio = make([][]float64, layers)
+	neuralNet.DropFlag = make([][]bool, layers)
+	neuralNet.NumDrop = make([][]int, layers)
 	neuralNet.Mask = make([]linearalgebra.Colvec, layers)
 	neuralNet.ParamMomentum.moment = make([][][]float64, layers)
 	neuralNet.ParamAdaGrad.SqSum = make([][][]float64, layers)
@@ -118,6 +121,9 @@ func Make(nodes []int, strActFuncHidden []string, strActFuncOut string) (neuralN
 		neuralNet.W[i] = make([][]float64, nodes[i])
 		neuralNet.DW[i] = make([][]float64, nodes[i])
 		neuralNet.DiffW[i] = make([][]float64, nodes[i])
+		neuralNet.DropRatio[i] = make([]float64, nodes[i])
+		neuralNet.DropFlag[i] = make([]bool, nodes[i])
+		neuralNet.NumDrop[i] = make([]int, nodes[i])
 		neuralNet.Mask[i] = make(linearalgebra.Colvec, nodes[i])
 		neuralNet.ParamMomentum.moment[i] = make([][]float64, nodes[i])
 		neuralNet.ParamAdaGrad.SqSum[i] = make([][]float64, nodes[i])

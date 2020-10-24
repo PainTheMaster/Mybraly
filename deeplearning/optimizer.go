@@ -25,6 +25,7 @@ const (
 func (neuNet *NeuralNet) Differentiate(input, correct []linearalgebra.Colvec) {
 	numData := len(input)
 
+	//Resettin the Diff matrix
 	for layer := 1; layer <= len(neuNet.DiffW)-1; layer++ {
 		for j := range neuNet.DiffW[layer] {
 			for i := range neuNet.DiffW[layer][j] {
@@ -44,31 +45,44 @@ func (neuNet *NeuralNet) Differentiate(input, correct []linearalgebra.Colvec) {
 			actFuncDiff := neuNet.ActFuncHidden[layer].Backward(neuNet.Midval[layer], neuNet.Output[layer])
 			for j := range neuNet.Delta[layer] {
 				neuNet.Delta[layer][j] = 0.0
-				for k := range neuNet.Delta[layer+1] {
-					neuNet.Delta[layer][j] += neuNet.Delta[layer+1][k] * neuNet.W[layer+1][k][j] * actFuncDiff[j]
+
+				//calculate the Delta only if the DropFlag is not set
+				if !neuNet.DropFlag[layer][j] {
+					for k := range neuNet.Delta[layer+1] {
+						//Delta[layer+1][k] == 0, so this calcuatation automaticaly takes the dropping out of the next layer into account
+						neuNet.Delta[layer][j] += neuNet.Delta[layer+1][k] * neuNet.W[layer+1][k][j] * actFuncDiff[j]
+					}
 				}
 			}
 		}
 
+		//TODO: the nest is too deep. Improve this somehow.
 		for layer = 1; layer <= len(neuNet.W)-1; layer++ {
 			for j := range neuNet.W[layer] {
-				for i := range neuNet.W[layer][j] {
-					neuNet.DiffW[layer][j][i] += neuNet.Delta[layer][j] * neuNet.Output[layer-1][i]
+				//Calculate the diffW only when DropFlag is not set. Otherwise, DiffW remain to be 0.
+				if !neuNet.DropFlag[layer][j] {
+					for i := range neuNet.W[layer][j] {
+						//Add to diffW only when the node in the previous layer ([layer-1][i]) is alive.
+						if !neuNet.DropFlag[layer-1][i] {
+							neuNet.DiffW[layer][j][i] += neuNet.Delta[layer][j] * neuNet.Output[layer-1][i]
+						}
+					}
 				}
 			}
 		}
 	}
 
+	reverseNumData := 1.0 / float64(numData)
 	for layer := 1; layer <= len(neuNet.DiffW)-1; layer++ {
 		for j := range neuNet.DiffW[layer] {
 			for i := range neuNet.DiffW[layer][j] {
-				neuNet.DiffW[layer][j][i] /= float64(numData)
+				neuNet.DiffW[layer][j][i] *= reverseNumData
 			}
 		}
 	}
 }
 
-//GradDescent optimizes the neural network to fit the given dataset.
+//GradDescent optimizes the neural network to fit the given dataset. Dropout compatible.
 func (neuNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec) (err float64) {
 	numData := len(input)
 
@@ -76,12 +90,21 @@ func (neuNet *NeuralNet) GradDescent(input, correct []linearalgebra.Colvec) (err
 
 	for layer := 1; layer <= len(neuNet.W)-1; layer++ {
 		for j := range neuNet.W[layer] {
-			for i := range neuNet.W[layer][j] {
-				neuNet.DW[layer][j][i] = (-1.0) * neuNet.DiffW[layer][j][i] * neuNet.ParamGradDecent.LearnRate
-				neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
+			if !neuNet.DropFlag[layer][j] {
+				for i := range neuNet.W[layer][j] {
+					neuNet.DW[layer][j][i] = (-1.0) * neuNet.DiffW[layer][j][i] * neuNet.ParamGradDecent.LearnRate
+					neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
+				}
+			} else {
+				for i := range neuNet.W[layer][j] {
+					neuNet.DW[layer][j][i] = 0.0
+				}
+				neuNet.NumDrop[layer][j]++
 			}
 		}
 	}
+
+	neuNet.NumTrial++
 
 	err = 0.0
 	for data := range input {
@@ -136,20 +159,25 @@ func (neuNet *NeuralNet) AdaGrad(input, correct []linearalgebra.Colvec) (err flo
 				}
 			}
 		}
-		neuNet.ParamAdaGrad.Rep++
 	} else {
 		neuNet.Differentiate(input, correct)
 		for layer := 1; layer <= len(neuNet.ParamAdaGrad.SqSum)-1; layer++ {
 			for j := 0; j <= len(neuNet.ParamAdaGrad.SqSum[layer])-1; j++ {
-				for i := 0; i <= len(neuNet.ParamAdaGrad.SqSum[layer][j])-1; i++ {
-					neuNet.ParamAdaGrad.SqSum[layer][j][i] += neuNet.DiffW[layer][j][i] * neuNet.DiffW[layer][j][i]
-					neuNet.DW[layer][j][i] = -1.0 * neuNet.ParamAdaGrad.LearnRate * neuNet.DiffW[layer][j][i] / math.Sqrt(neuNet.ParamAdaGrad.SqSum[layer][j][i])
-					neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
+				if !neuNet.DropFlag[layer][j] {
+					for i := 0; i <= len(neuNet.ParamAdaGrad.SqSum[layer][j])-1; i++ {
+						neuNet.ParamAdaGrad.SqSum[layer][j][i] += neuNet.DiffW[layer][j][i] * neuNet.DiffW[layer][j][i]
+						neuNet.DW[layer][j][i] = -1.0 * neuNet.ParamAdaGrad.LearnRate * neuNet.DiffW[layer][j][i] / math.Sqrt(neuNet.ParamAdaGrad.SqSum[layer][j][i])
+						neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
+					}
+				} else {
+					neuNet.NumDrop[layer][j]++
 				}
 			}
 		}
-		neuNet.ParamAdaGrad.Rep++
 	}
+
+	neuNet.ParamAdaGrad.Rep++
+	neuNet.NumTrial++
 
 	err = 0.0
 	for data := range input {
@@ -211,7 +239,7 @@ func (neuNet *NeuralNet) AdaGradWeightDecay(input, correct []linearalgebra.Colve
 	return
 }
 
-//Momentum performs single run of momentum based optimization by using a (mini-) batch.
+//Momentum performs single run of momentum based optimization by using a (mini-) batch. Dropout compatible.
 func (neuNet *NeuralNet) Momentum(input, correct []linearalgebra.Colvec) (err float64) {
 	numData := len(input)
 
@@ -219,10 +247,19 @@ func (neuNet *NeuralNet) Momentum(input, correct []linearalgebra.Colvec) (err fl
 
 	for layer := 1; layer <= len(neuNet.W)-1; layer++ {
 		for j := range neuNet.W[layer] {
-			for i := range neuNet.W[layer][j] {
-				neuNet.DW[layer][j][i] = neuNet.ParamMomentum.MomentRate*neuNet.ParamMomentum.moment[layer][j][i] - (1.0-neuNet.ParamMomentum.MomentRate)*neuNet.ParamMomentum.LearnRate*neuNet.DiffW[layer][j][i]
-				neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
-				neuNet.ParamMomentum.moment[layer][j][i] = neuNet.DW[layer][j][i]
+			//If not dropped
+			if !neuNet.DropFlag[layer][j] {
+				for i := range neuNet.W[layer][j] {
+					neuNet.DW[layer][j][i] = neuNet.ParamMomentum.MomentRatio*neuNet.ParamMomentum.moment[layer][j][i] - (1.0-neuNet.ParamMomentum.MomentRatio)*neuNet.ParamMomentum.LearnRate*neuNet.DiffW[layer][j][i]
+					neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
+					neuNet.ParamMomentum.moment[layer][j][i] = neuNet.DW[layer][j][i]
+				}
+				//If dropped
+			} else {
+				for i := range neuNet.W[layer][j] {
+					neuNet.DW[layer][j][i] = 0.0
+					neuNet.ParamMomentum.moment[layer][j][i] = neuNet.DW[layer][j][i]
+				}
 			}
 		}
 	}
@@ -247,13 +284,13 @@ func (neuNet *NeuralNet) MomentumWeightDecay(input, correct []linearalgebra.Colv
 		for j := range neuNet.W[layer] {
 			for i := 0; i <= len(neuNet.W[layer][j])-2; i++ {
 				diffModif := neuNet.DiffW[layer][j][i] + neuNet.WeightDecayCoeff*neuNet.W[layer][j][i]
-				neuNet.DW[layer][j][i] = neuNet.ParamMomentum.MomentRate*neuNet.ParamMomentum.moment[layer][j][i] - (1.0-neuNet.ParamMomentum.MomentRate)*neuNet.ParamMomentum.LearnRate*diffModif
+				neuNet.DW[layer][j][i] = neuNet.ParamMomentum.MomentRatio*neuNet.ParamMomentum.moment[layer][j][i] - (1.0-neuNet.ParamMomentum.MomentRatio)*neuNet.ParamMomentum.LearnRate*diffModif
 				neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
 				neuNet.ParamMomentum.moment[layer][j][i] = neuNet.DW[layer][j][i]
 			}
 			{
 				i := len(neuNet.W[layer][j]) - 1
-				neuNet.DW[layer][j][i] = neuNet.ParamMomentum.MomentRate*neuNet.ParamMomentum.moment[layer][j][i] - (1.0-neuNet.ParamMomentum.MomentRate)*neuNet.ParamMomentum.LearnRate*neuNet.DiffW[layer][j][i]
+				neuNet.DW[layer][j][i] = neuNet.ParamMomentum.MomentRatio*neuNet.ParamMomentum.moment[layer][j][i] - (1.0-neuNet.ParamMomentum.MomentRatio)*neuNet.ParamMomentum.LearnRate*neuNet.DiffW[layer][j][i]
 				neuNet.W[layer][j][i] += neuNet.DW[layer][j][i]
 				neuNet.ParamMomentum.moment[layer][j][i] = neuNet.DW[layer][j][i]
 			}
